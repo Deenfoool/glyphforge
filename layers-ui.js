@@ -186,7 +186,7 @@
   }
 
   window.addEventListener('glyphforge:layers-changed', event => {
-    if (event.detail?.reason === 'render') scheduleContentRefresh();
+    if (event.detail?.reason === 'render' || event.detail?.reason === 'opacity') scheduleContentRefresh();
     else scheduleRender();
   });
   window.addEventListener('load', scheduleRender);
