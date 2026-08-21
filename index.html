@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#070a08" />
+  <title>GlyphForge — ASCII Art Editor</title>
+  <meta name="description" content="Локальный браузерный редактор ASCII-арта: рисование символами, трассировка по изображению, конвертация изображения в ASCII и экспорт." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-wrap">
+        <div class="brand-mark" aria-hidden="true">GF</div>
+        <div>
+          <h1>GlyphForge</h1>
+          <p>ASCII / glyph art editor</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="undoBtn" class="button ghost" title="Отменить (Ctrl+Z)">↶ Отменить</button>
+        <button id="redoBtn" class="button ghost" title="Вернуть (Ctrl+Y)">↷ Вернуть</button>
+        <button id="copyBtn" class="button">Копировать текст</button>
+        <button id="exportPngBtn" class="button primary">Экспорт PNG</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="panel left-panel">
+        <section class="panel-section">
+          <div class="section-title-row">
+            <h2>Инструменты</h2>
+            <span class="hint">Q–T</span>
+          </div>
+          <div class="tool-grid" id="toolGrid">
+            <button class="tool-button active" data-tool="pencil" title="Карандаш"><span>✎</span><small>Карандаш</small></button>
+            <button class="tool-button" data-tool="eraser" title="Ластик"><span>⌫</span><small>Ластик</small></button>
+            <button class="tool-button" data-tool="line" title="Линия"><span>／</span><small>Линия</small></button>
+            <button class="tool-button" data-tool="rect" title="Прямоугольник"><span>□</span><small>Рамка</small></button>
+            <button class="tool-button" data-tool="fill" title="Заливка"><span>◈</span><small>Заливка</small></button>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h2>Символ кисти</h2>
+          <div class="character-picker">
+            <input id="charInput" type="text" value="#" maxlength="2" aria-label="Текущий символ" />
+            <div class="char-meta">
+              <strong id="selectedCharLabel">#</strong>
+              <span>текущий символ</span>
+            </div>
+          </div>
+          <div class="quick-palette" id="quickPalette" aria-label="Быстрый выбор символа"></div>
+        </section>
+
+        <section class="panel-section">
+          <h2>Палитра символов</h2>
+          <div class="preset-buttons">
+            <button class="chip active" data-preset="strict">ASCII</button>
+            <button class="chip" data-preset="dense">Плотность</button>
+            <button class="chip" data-preset="tech">Tech</button>
+            <button class="chip" data-preset="blocks">Блоки</button>
+          </div>
+          <label class="field-label" for="charsetInput">Набор для конвертации</label>
+          <textarea id="charsetInput" rows="3" spellcheck="false">@%#*+=-:. </textarea>
+          <p class="microcopy">Слева — тёмные/плотные символы, справа — светлые/редкие.</p>
+        </section>
+
+        <section class="panel-section">
+          <h2>Цвет</h2>
+          <div class="color-row">
+            <label>Символ <input id="fgColor" type="color" value="#8dff00" /></label>
+            <label>Фон <input id="bgColor" type="color" value="#050806" /></label>
+          </div>
+        </section>
+      </aside>
+
+      <section class="editor-column">
+        <div class="editor-toolbar panel-inline">
+          <div class="field-group compact">
+            <label for="colsInput">Колонки</label>
+            <input id="colsInput" type="number" min="8" max="240" value="80" />
+          </div>
+          <div class="field-group compact">
+            <label for="rowsInput">Строки</label>
+            <input id="rowsInput" type="number" min="6" max="160" value="42" />
+          </div>
+          <button id="resizeBtn" class="button ghost">Применить сетку</button>
+          <div class="divider"></div>
+          <label class="toggle"><input id="gridToggle" type="checkbox" checked /><span>Сетка</span></label>
+          <label class="range-inline">Масштаб <input id="zoomRange" type="range" min="55" max="180" value="100" /></label>
+          <span id="zoomLabel" class="status-pill">100%</span>
+        </div>
+
+        <div class="canvas-frame" id="canvasFrame">
+          <canvas id="asciiCanvas" aria-label="Редактор ASCII-арта"></canvas>
+          <div id="cursorInfo" class="cursor-info">x: 0 · y: 0</div>
+        </div>
+
+        <div class="statusbar panel-inline">
+          <span id="gridStatus">80 × 42</span>
+          <span id="toolStatus">Карандаш · #</span>
+          <span id="saveStatus">Сохранено локально</span>
+        </div>
+      </section>
+
+      <aside class="panel right-panel">
+        <section class="panel-section">
+          <h2>Изображение → ASCII</h2>
+          <label class="drop-zone" for="imageInput">
+            <input id="imageInput" type="file" accept="image/*" hidden />
+            <span class="drop-icon">↥</span>
+            <strong>Загрузить изображение</strong>
+            <small>PNG, JPG, WEBP</small>
+          </label>
+          <div class="stack-actions">
+            <button id="convertImageBtn" class="button primary" disabled>Конвертировать в ASCII</button>
+            <button id="fitImageGridBtn" class="button ghost" disabled>Подогнать сетку под изображение</button>
+          </div>
+          <label class="toggle full"><input id="invertToggle" type="checkbox" /><span>Инвертировать яркость</span></label>
+          <label class="toggle full"><input id="sourceColorToggle" type="checkbox" /><span>Брать цвет символов из изображения</span></label>
+          <label class="range-block">Контраст <span id="contrastLabel">100%</span><input id="contrastRange" type="range" min="50" max="220" value="100" /></label>
+        </section>
+
+        <section class="panel-section">
+          <h2>Подложка для обводки</h2>
+          <label class="toggle full"><input id="referenceToggle" type="checkbox" disabled /><span>Показывать изображение под сеткой</span></label>
+          <label class="range-block">Прозрачность <span id="referenceOpacityLabel">28%</span><input id="referenceOpacity" type="range" min="5" max="90" value="28" disabled /></label>
+          <p class="microcopy">Подложка видна только в редакторе и не попадает в экспорт PNG.</p>
+        </section>
+
+        <section class="panel-section">
+          <h2>Файл</h2>
+          <div class="stack-actions">
+            <button id="exportTxtBtn" class="button">Скачать TXT</button>
+            <button id="importTxtBtn" class="button ghost">Импорт TXT</button>
+            <input id="txtInput" type="file" accept=".txt,text/plain" hidden />
+            <button id="clearBtn" class="button danger-ghost">Очистить холст</button>
+          </div>
+        </section>
+
+        <section class="panel-section shortcuts">
+          <h2>Горячие клавиши</h2>
+          <div><kbd>Q</kbd><span>карандаш</span></div>
+          <div><kbd>W</kbd><span>ластик</span></div>
+          <div><kbd>E</kbd><span>линия</span></div>
+          <div><kbd>R</kbd><span>рамка</span></div>
+          <div><kbd>T</kbd><span>заливка</span></div>
+          <div><kbd>Ctrl Z</kbd><span>отмена</span></div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
