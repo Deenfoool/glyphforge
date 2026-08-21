@@ -69,3 +69,24 @@
 
   requestAnimationFrame(scheduleFit);
 })();
+
+// Load the professional editor layout without disturbing the existing app
+// bindings. The layout module only relocates already-bound DOM nodes.
+(() => {
+  'use strict';
+
+  if (!document.querySelector('link[data-glyphforge-editor-layout]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'editor-layout.css';
+    link.dataset.glyphforgeEditorLayout = 'true';
+    document.head.appendChild(link);
+  }
+
+  if (!document.querySelector('script[data-glyphforge-editor-layout]')) {
+    const script = document.createElement('script');
+    script.src = 'editor-layout.js';
+    script.dataset.glyphforgeEditorLayout = 'true';
+    document.body.appendChild(script);
+  }
+})();
