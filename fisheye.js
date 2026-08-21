@@ -461,3 +461,93 @@
 
   updateLens();
 })();
+
+// Brush cursor outline: follow the actual selected brush tip instead of
+// always drawing the rectangular bounding box used by app-v3.js.
+(() => {
+  'use strict';
+
+  if (window.__glyphforgeBrushCursorShapeFix) return;
+  window.__glyphforgeBrushCursorShapeFix = true;
+
+  const canvas = document.getElementById('asciiCanvas');
+  const colsInput = document.getElementById('colsInput');
+  const rowsInput = document.getElementById('rowsInput');
+  const sizeInput = document.getElementById('sizeRange');
+  const tipInput = document.getElementById('tipSelect');
+  const roundnessInput = document.getElementById('roundnessRange');
+  const angleInput = document.getElementById('angleRange');
+
+  if (!canvas || !colsInput || !rowsInput || !sizeInput || !tipInput) return;
+
+  const proto = CanvasRenderingContext2D.prototype;
+  const nativeStrokeRect = proto.strokeRect;
+
+  function numberValue(input, fallback) {
+    const value = Number(input?.value);
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+  function isBrushCursorRect(context, width, height) {
+    if (context.canvas !== canvas || !canvas.width || !canvas.height) return false;
+
+    const cols = Math.max(1, numberValue(colsInput, 80));
+    const rows = Math.max(1, numberValue(rowsInput, 42));
+    const size = Math.max(1, numberValue(sizeInput, 1));
+    const expectedWidth = size * (canvas.width / cols);
+    const expectedHeight = size * (canvas.height / rows);
+
+    return Math.abs(Math.abs(width) - expectedWidth) <= 1.5 &&
+      Math.abs(Math.abs(height) - expectedHeight) <= 1.5;
+  }
+
+  function drawBrushOutline(context, x, y, width, height) {
+    const tip = tipInput.value || 'circle';
+
+    if (tip === 'square' || tip === 'custom' || tip === 'pattern') {
+      return nativeStrokeRect.call(context, x, y, width, height);
+    }
+
+    const cx = x + width / 2;
+    const cy = y + height / 2;
+    const rx = Math.abs(width) / 2;
+    const ry = Math.abs(height) / 2;
+    const roundness = Math.max(.05, Math.min(1, numberValue(roundnessInput, 100) / 100));
+    const angle = numberValue(angleInput, 0) * Math.PI / 180;
+
+    context.save();
+    context.beginPath();
+
+    if (tip === 'diamond') {
+      context.translate(cx, cy);
+      context.rotate(angle);
+      context.moveTo(0, -ry * roundness);
+      context.lineTo(rx, 0);
+      context.lineTo(0, ry * roundness);
+      context.lineTo(-rx, 0);
+      context.closePath();
+    } else if (tip === 'line') {
+      context.translate(cx, cy);
+      context.rotate(angle);
+      context.moveTo(-rx, 0);
+      context.lineTo(rx, 0);
+    } else {
+      // Circle follows the same cell-space footprint as the real brush.
+      // Ellipse additionally respects Roundness and Angle.
+      const ellipseRoundness = tip === 'ellipse' ? roundness : 1;
+      context.ellipse(cx, cy, rx, ry * ellipseRoundness, angle, 0, Math.PI * 2);
+    }
+
+    context.stroke();
+    context.restore();
+  }
+
+  proto.strokeRect = function (x, y, width, height) {
+    if (isBrushCursorRect(this, width, height)) {
+      drawBrushOutline(this, x, y, width, height);
+      return;
+    }
+
+    return nativeStrokeRect.call(this, x, y, width, height);
+  };
+})();
