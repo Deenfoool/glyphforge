@@ -1,0 +1,9 @@
+title: GlyphForge
+description: ASCII / glyph art editor with CRT-inspired interface
+url: "https://deenfoool.github.io"
+baseurl: "/glyphforge"
+
+# GitHub Pages builds the project with Jekyll.
+# The app itself is static HTML/CSS/JS, so Jekyll simply publishes it.
+exclude:
+  - README.md
