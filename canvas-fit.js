@@ -70,22 +70,48 @@
   requestAnimationFrame(scheduleFit);
 })();
 
-// Load the editor shell only after its stylesheet is ready. Then load the
-// real Layers inspector on top of that shell.
+// Load the editor shell only after its stylesheet is ready, then layer UI and
+// finally the adaptive context-menu system. Keeping this order avoids the
+// unstyled-layout flash on GitHub Pages and gives context menus access to the
+// real layer inspector instead of placeholder DOM.
 (() => {
   'use strict';
 
   const STYLE_ID = 'glyphforge-editor-layout-style';
   const SCRIPT_ID = 'glyphforge-editor-layout-script';
   const LAYERS_SCRIPT_ID = 'glyphforge-layers-ui-script';
-  const VERSION = '20260821-1605';
+  const CONTEXT_STYLE_ID = 'glyphforge-context-menu-style';
+  const CONTEXT_SCRIPT_ID = 'glyphforge-context-menu-script';
+  const VERSION = '20260821-1620';
+
+  function loadContextMenus() {
+    if (!document.getElementById(CONTEXT_STYLE_ID)) {
+      const link = document.createElement('link');
+      link.id = CONTEXT_STYLE_ID;
+      link.rel = 'stylesheet';
+      link.href = `context-menu.css?v=${VERSION}`;
+      document.head.appendChild(link);
+    }
+    if (document.getElementById(CONTEXT_SCRIPT_ID)) return;
+    const script = document.createElement('script');
+    script.id = CONTEXT_SCRIPT_ID;
+    script.src = `context-menu.js?v=${VERSION}`;
+    script.async = false;
+    document.body.appendChild(script);
+  }
 
   function loadLayersUi() {
-    if (document.getElementById(LAYERS_SCRIPT_ID)) return;
+    const existing = document.getElementById(LAYERS_SCRIPT_ID);
+    if (existing) {
+      if (window.GlyphForgeLayers) loadContextMenus();
+      else existing.addEventListener('load', loadContextMenus, { once: true });
+      return;
+    }
     const script = document.createElement('script');
     script.id = LAYERS_SCRIPT_ID;
     script.src = `layers-ui.js?v=${VERSION}`;
     script.async = false;
+    script.addEventListener('load', loadContextMenus, { once: true });
     document.body.appendChild(script);
   }
 
