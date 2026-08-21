@@ -70,6 +70,21 @@
   requestAnimationFrame(scheduleFit);
 })();
 
+// Image fitting is independent from the shell, so load it immediately after
+// app-v3.js. The default mode is "contain": the whole source image remains
+// visible instead of being cropped to the current glyph-canvas aspect ratio.
+(() => {
+  'use strict';
+
+  const id = 'glyphforge-image-fit-script';
+  if (document.getElementById(id)) return;
+  const script = document.createElement('script');
+  script.id = id;
+  script.src = 'image-fit.js?v=20260821-1630';
+  script.async = false;
+  document.body.appendChild(script);
+})();
+
 // Load the editor shell only after its stylesheet is ready, then layer UI and
 // finally the adaptive context-menu system. Keeping this order avoids the
 // unstyled-layout flash on GitHub Pages and gives context menus access to the
@@ -82,7 +97,7 @@
   const LAYERS_SCRIPT_ID = 'glyphforge-layers-ui-script';
   const CONTEXT_STYLE_ID = 'glyphforge-context-menu-style';
   const CONTEXT_SCRIPT_ID = 'glyphforge-context-menu-script';
-  const VERSION = '20260821-1620';
+  const VERSION = '20260821-1630';
 
   function loadContextMenus() {
     if (!document.getElementById(CONTEXT_STYLE_ID)) {
