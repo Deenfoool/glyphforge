@@ -70,23 +70,38 @@
   requestAnimationFrame(scheduleFit);
 })();
 
-// Load the editor shell only after its stylesheet is ready. Relocating the
-// controls before the CSS was applied caused the huge unstyled layout seen on
-// GitHub Pages, especially when the stylesheet was not yet cached.
+// Load the editor shell only after its stylesheet is ready. Then load the
+// real Layers inspector on top of that shell.
 (() => {
   'use strict';
 
   const STYLE_ID = 'glyphforge-editor-layout-style';
   const SCRIPT_ID = 'glyphforge-editor-layout-script';
-  const VERSION = '20260821-1545';
+  const LAYERS_SCRIPT_ID = 'glyphforge-layers-ui-script';
+  const VERSION = '20260821-1605';
+
+  function loadLayersUi() {
+    if (document.getElementById(LAYERS_SCRIPT_ID)) return;
+    const script = document.createElement('script');
+    script.id = LAYERS_SCRIPT_ID;
+    script.src = `layers-ui.js?v=${VERSION}`;
+    script.async = false;
+    document.body.appendChild(script);
+  }
 
   function loadLayoutScript() {
-    if (document.getElementById(SCRIPT_ID)) return;
+    const existing = document.getElementById(SCRIPT_ID);
+    if (existing) {
+      if (document.body.classList.contains('editor-shell-v2')) loadLayersUi();
+      else existing.addEventListener('load', loadLayersUi, { once: true });
+      return;
+    }
 
     const script = document.createElement('script');
     script.id = SCRIPT_ID;
     script.src = `editor-layout.js?v=${VERSION}`;
     script.async = false;
+    script.addEventListener('load', loadLayersUi, { once: true });
     document.body.appendChild(script);
   }
 
