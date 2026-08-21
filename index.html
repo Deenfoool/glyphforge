@@ -1,235 +1,45 @@
 <!doctype html>
 <html lang="ru" data-theme="night">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#050806" />
-  <title>GlyphForge — ASCII / Glyph Art Editor</title>
-  <meta name="description" content="GlyphForge — браузерный редактор ASCII- и glyph-арта с кистями, светом/тенью, Image→ASCII и атмосферой старого ЭЛТ-монитора." />
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#050806"/>
+<title>GlyphForge — ASCII / Glyph Art Editor</title><meta name="description" content="GlyphForge — браузерный ASCII и glyph-art редактор с продвинутым brush engine, Image→ASCII и CRT-интерфейсом."/>
+<link rel="stylesheet" href="styles-v3.css"/>
 </head>
-<body>
-  <div class="crt-noise" aria-hidden="true"></div>
-  <div class="app-shell">
-    <header class="topbar">
-      <div class="brand-wrap">
-        <div class="brand-mark" aria-hidden="true">GF</div>
-        <div>
-          <h1>GlyphForge</h1>
-          <p>ASCII / glyph art terminal</p>
-        </div>
-      </div>
-
-      <div class="top-actions">
-        <button id="undoBtn" class="button ghost" title="Отменить (Ctrl+Z)">↶ Отменить</button>
-        <button id="redoBtn" class="button ghost" title="Вернуть (Ctrl+Y)">↷ Вернуть</button>
-        <button id="copyBtn" class="button">Копировать текст</button>
-        <button id="exportPngBtn" class="button primary">Экспорт PNG</button>
-      </div>
-    </header>
-
-    <main class="workspace">
-      <aside class="panel left-panel">
-        <section class="panel-section">
-          <div class="section-title-row">
-            <h2>Инструменты</h2>
-            <span class="hint">Q–U</span>
-          </div>
-
-          <div class="tool-grid" id="toolGrid">
-            <button class="tool-button active" data-tool="pencil" title="Кисть (Q)"><span>✎</span><small>Кисть</small></button>
-            <button class="tool-button" data-tool="eraser" title="Ластик (W)"><span>⌫</span><small>Ластик</small></button>
-            <button class="tool-button" data-tool="lighten" title="Осветление (E)"><span>☼</span><small>Осветлить</small></button>
-            <button class="tool-button" data-tool="darken" title="Затемнение (R)"><span>◐</span><small>Тень</small></button>
-            <button class="tool-button" data-tool="line" title="Линия (T)"><span>／</span><small>Линия</small></button>
-            <button class="tool-button" data-tool="rect" title="Прямоугольник (Y)"><span>□</span><small>Рамка</small></button>
-            <button class="tool-button" data-tool="fill" title="Заливка (U)"><span>◈</span><small>Заливка</small></button>
-          </div>
-        </section>
-
-        <section class="panel-section">
-          <div class="section-title-row">
-            <h2>Кисть</h2>
-            <span id="brushSizeLabel" class="status-pill">1 × 1</span>
-          </div>
-
-          <label class="range-block">
-            Размер
-            <span id="brushSizeValue">1</span>
-            <input id="brushSizeRange" type="range" min="1" max="9" step="2" value="1" />
-          </label>
-
-          <div class="segmented" aria-label="Форма кисти">
-            <button class="segment active" data-brush-shape="square">Квадрат</button>
-            <button class="segment" data-brush-shape="round">Круг</button>
-          </div>
-
-          <p class="microcopy">Размер влияет на кисть, ластик, свет/тень, линии и рамки.</p>
-        </section>
-
-        <section class="panel-section">
-          <h2>Символ кисти</h2>
-          <div class="character-picker">
-            <input id="charInput" type="text" value="#" maxlength="2" aria-label="Текущий символ" />
-            <div class="char-meta">
-              <strong id="selectedCharLabel">#</strong>
-              <span>текущий символ</span>
-            </div>
-          </div>
-          <div class="quick-palette" id="quickPalette" aria-label="Быстрый выбор символа"></div>
-        </section>
-
-        <section class="panel-section">
-          <h2>Шкала плотности</h2>
-          <div class="preset-buttons">
-            <button class="chip active" data-preset="strict">ASCII</button>
-            <button class="chip" data-preset="dense">Плотность</button>
-            <button class="chip" data-preset="tech">Tech</button>
-            <button class="chip" data-preset="blocks">Блоки</button>
-          </div>
-          <label class="field-label" for="charsetInput">Тёмный → светлый</label>
-          <textarea id="charsetInput" rows="3" spellcheck="false">@%#*+=-:. </textarea>
-          <p class="microcopy">Кисти «Осветлить» и «Тень» двигают символ по этой шкале. Она же используется при Image → ASCII.</p>
-        </section>
-
-        <section class="panel-section">
-          <h2>Цвет</h2>
-          <div class="color-row">
-            <label>Символ <input id="fgColor" type="color" value="#8dff00" /></label>
-            <label>Фон <input id="bgColor" type="color" value="#050806" /></label>
-          </div>
-        </section>
-      </aside>
-
-      <section class="editor-column">
-        <div class="editor-toolbar panel-inline">
-          <div class="field-group compact">
-            <label for="colsInput">Колонки</label>
-            <input id="colsInput" type="number" min="8" max="240" value="80" />
-          </div>
-          <div class="field-group compact">
-            <label for="rowsInput">Строки</label>
-            <input id="rowsInput" type="number" min="6" max="160" value="42" />
-          </div>
-          <button id="resizeBtn" class="button ghost">Применить сетку</button>
-
-          <div class="divider"></div>
-
-          <label class="toggle"><input id="gridToggle" type="checkbox" checked /><span>Сетка</span></label>
-          <label class="range-inline">Масштаб <input id="zoomRange" type="range" min="55" max="180" value="100" /></label>
-          <span id="zoomLabel" class="status-pill">100%</span>
-        </div>
-
-        <div class="crt-bezel">
-          <div class="crt-screen" id="crtScreen">
-            <div class="scanlines" aria-hidden="true"></div>
-            <div class="screen-glare" aria-hidden="true"></div>
-            <div class="canvas-frame" id="canvasFrame">
-              <canvas id="asciiCanvas" aria-label="Редактор ASCII-арта"></canvas>
-              <div id="cursorInfo" class="cursor-info">x: 0 · y: 0</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="statusbar panel-inline">
-          <span id="gridStatus">80 × 42</span>
-          <span id="toolStatus">Кисть · # · 1×</span>
-          <span id="saveStatus">Сохранено локально</span>
-        </div>
-      </section>
-
-      <aside class="panel right-panel">
-        <section class="panel-section">
-          <div class="section-title-row">
-            <h2>Экран / CRT</h2>
-            <span class="terminal-led" aria-label="CRT включён"></span>
-          </div>
-
-          <div class="theme-switch" role="group" aria-label="Тема">
-            <button id="nightThemeBtn" class="theme-button active" data-theme-value="night">☾ Ночь</button>
-            <button id="dayThemeBtn" class="theme-button" data-theme-value="day">☀ День</button>
-          </div>
-
-          <label class="toggle full">
-            <input id="fishEyeToggle" type="checkbox" />
-            <span>Эффект рыбьего глаза</span>
-          </label>
-
-          <label class="range-block">
-            Сила изгиба
-            <span id="fishEyeLabel">24%</span>
-            <input id="fishEyeRange" type="range" min="0" max="100" value="24" />
-          </label>
-
-          <label class="toggle full">
-            <input id="scanlinesToggle" type="checkbox" checked />
-            <span>Строки развёртки</span>
-          </label>
-
-          <label class="range-block">
-            Свечение
-            <span id="glowLabel">45%</span>
-            <input id="glowRange" type="range" min="0" max="100" value="45" />
-          </label>
-
-          <p class="microcopy">CRT-эффекты меняют только интерфейс и не попадают в обычный PNG/TXT экспорт.</p>
-        </section>
-
-        <section class="panel-section">
-          <h2>Изображение → ASCII</h2>
-          <label class="drop-zone" for="imageInput">
-            <input id="imageInput" type="file" accept="image/*" hidden />
-            <span class="drop-icon">↥</span>
-            <strong>Загрузить изображение</strong>
-            <small>PNG, JPG, WEBP</small>
-          </label>
-
-          <div class="stack-actions">
-            <button id="convertImageBtn" class="button primary" disabled>Конвертировать в ASCII</button>
-            <button id="fitImageGridBtn" class="button ghost" disabled>Подогнать сетку под изображение</button>
-          </div>
-
-          <label class="toggle full"><input id="invertToggle" type="checkbox" /><span>Инвертировать яркость</span></label>
-          <label class="toggle full"><input id="sourceColorToggle" type="checkbox" /><span>Брать цвет символов из изображения</span></label>
-          <label class="range-block">Контраст <span id="contrastLabel">100%</span><input id="contrastRange" type="range" min="50" max="220" value="100" /></label>
-        </section>
-
-        <section class="panel-section">
-          <h2>Подложка для обводки</h2>
-          <label class="toggle full"><input id="referenceToggle" type="checkbox" disabled /><span>Показывать изображение под сеткой</span></label>
-          <label class="range-block">Прозрачность <span id="referenceOpacityLabel">28%</span><input id="referenceOpacity" type="range" min="5" max="90" value="28" disabled /></label>
-          <p class="microcopy">Подложка видна только в редакторе и не попадает в экспорт PNG.</p>
-        </section>
-
-        <section class="panel-section">
-          <h2>Файл</h2>
-          <div class="stack-actions">
-            <button id="exportTxtBtn" class="button">Скачать TXT</button>
-            <button id="importTxtBtn" class="button ghost">Импорт TXT</button>
-            <input id="txtInput" type="file" accept=".txt,text/plain" hidden />
-            <button id="clearBtn" class="button danger-ghost">Очистить холст</button>
-          </div>
-        </section>
-
-        <section class="panel-section shortcuts">
-          <h2>Горячие клавиши</h2>
-          <div><kbd>Q</kbd><span>кисть</span></div>
-          <div><kbd>W</kbd><span>ластик</span></div>
-          <div><kbd>E</kbd><span>осветлить</span></div>
-          <div><kbd>R</kbd><span>тень</span></div>
-          <div><kbd>T</kbd><span>линия</span></div>
-          <div><kbd>Y</kbd><span>рамка</span></div>
-          <div><kbd>U</kbd><span>заливка</span></div>
-          <div><kbd>[ / ]</kbd><span>размер кисти</span></div>
-          <div><kbd>Ctrl Z</kbd><span>отмена</span></div>
-        </section>
-      </aside>
-    </main>
-  </div>
-
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="app.js"></script>
-  <script src="canvas-fit.js"></script>
-  <script src="fisheye.js"></script>
-</body>
-</html>
+<body><div class="crt-noise" aria-hidden="true"></div><div class="app-shell">
+<header class="topbar"><div class="brand-wrap"><div class="brand-mark">GF</div><div><h1>GlyphForge</h1><p>ASCII / glyph art terminal</p></div></div><div class="top-actions"><button id="undoBtn" class="button ghost">↶ Отменить</button><button id="redoBtn" class="button ghost">↷ Вернуть</button><button id="saveBrushBtn" class="button ghost">Сохранить кисть</button><button id="copyBtn" class="button">Копировать ASCII</button><button id="exportPngBtn" class="button primary">Экспорт PNG</button></div></header>
+<main class="workspace">
+<aside class="panel left-panel">
+<section class="panel-section"><div class="section-title-row"><h2>Инструменты</h2><span class="hint">Q–I</span></div><div class="tool-grid" id="toolGrid"><button class="tool-button active" data-tool="brush"><span>✎</span><small>Кисть</small></button><button class="tool-button" data-tool="eraser"><span>⌫</span><small>Ластик</small></button><button class="tool-button" data-tool="lighten"><span>☼</span><small>Осветлить</small></button><button class="tool-button" data-tool="darken"><span>◐</span><small>Тень</small></button><button class="tool-button" data-tool="line"><span>／</span><small>Линия</small></button><button class="tool-button" data-tool="rect"><span>□</span><small>Рамка</small></button><button class="tool-button" data-tool="fill"><span>◈</span><small>Заливка</small></button><button class="tool-button" data-tool="picker"><span>⌾</span><small>Пипетка</small></button></div></section>
+<section class="panel-section"><h2>Символ</h2><div class="character-picker"><input id="charInput" type="text" value="#" maxlength="2"/><div class="char-meta"><strong id="selectedCharLabel">#</strong><span>текущий символ</span></div></div><div class="quick-palette" id="quickPalette"></div></section>
+<section class="panel-section"><h2>Шкала плотности</h2><div class="preset-buttons"><button class="chip active" data-charset="@%#*+=-:. ">ASCII</button><button class="chip" data-charset="@#8&%$*+=-:,. ">Dense</button><button class="chip" data-charset="MWN8B@$0OQXKAHmwpqdbkhao*+=-:. ">Tech</button><button class="chip" data-charset="█▓▒░ ">Blocks</button></div><label class="field-label">Тёмный → светлый</label><textarea id="charsetInput" rows="3" spellcheck="false">@%#*+=-:. </textarea><p class="microcopy">Внутри рисунок хранится как плотность 0–1. Символ выбирается из этой шкалы при рендере.</p></section>
+<section class="panel-section"><h2>Цвет</h2><div class="color-row"><label>Символ <input id="fgColor" type="color" value="#8dff00"/></label><label>Фон <input id="bgColor" type="color" value="#050806"/></label></div></section>
+<section class="panel-section"><h2>Пресеты кистей</h2><select id="brushPresetSelect" class="select"></select><div class="stack-actions compact-stack"><button id="applyBrushPresetBtn" class="button">Применить</button><button id="deleteCustomBrushBtn" class="button ghost">Удалить свою</button></div><div id="brushHistory" class="brush-history"></div></section>
+</aside>
+<section class="editor-column"><div class="editor-toolbar panel-inline"><div class="field-group compact"><label>Колонки</label><input id="colsInput" type="number" min="8" max="360" value="80"/></div><div class="field-group compact"><label>Строки</label><input id="rowsInput" type="number" min="6" max="240" value="42"/></div><button id="resizeBtn" class="button ghost">Применить сетку</button><div class="divider"></div><label class="toggle"><input id="gridToggle" type="checkbox" checked/><span>Сетка</span></label><label class="range-inline">Масштаб <input id="zoomRange" type="range" min="45" max="220" value="100"/></label><span id="zoomLabel" class="status-pill">100%</span><div class="divider"></div><label class="toggle"><input id="symmetryGuideToggle" type="checkbox" checked/><span>Оси симметрии</span></label></div>
+<div class="crt-bezel"><div class="crt-screen" id="crtScreen"><div class="scanlines"></div><div class="screen-glare"></div><div class="canvas-frame" id="canvasFrame"><canvas id="asciiCanvas" aria-label="Редактор ASCII-арта"></canvas><div id="cursorInfo" class="cursor-info">x: 0 · y: 0</div></div></div></div>
+<div class="statusbar panel-inline"><span id="gridStatus">80 × 42</span><span id="toolStatus">Кисть · #</span><span id="brushStatus">15px · H55 · Flow22</span><span id="saveStatus">Сохранено локально</span></div></section>
+<aside class="panel right-panel">
+<section class="panel-section brush-head"><div class="section-title-row"><h2>Brush Engine</h2><span class="status-pill accent-pill">1.0</span></div><div class="brush-preview-wrap"><canvas id="brushPreviewCanvas" width="260" height="110"></canvas></div><div class="mode-row"><label>Режим<select id="brushMode" class="select"><option value="density">Density</option><option value="normal">Normal</option><option value="lighten">Lighten</option><option value="darken">Darken</option><option value="random">Random</option><option value="pattern">Pattern</option><option value="erase">Erase</option></select></label><label>Blend<select id="blendMode" class="select"><option value="add">Add</option><option value="replace">Replace</option><option value="subtract">Subtract</option><option value="max">Max</option><option value="min">Min</option><option value="multiply">Multiply</option><option value="screen">Screen</option><option value="difference">Difference</option></select></label></div></section>
+<details class="settings-group" open><summary>Основная кисть</summary><div class="settings-body"><label class="range-block">Размер <span id="sizeValue">15</span><input id="sizeRange" data-brush-key="size" type="range" min="1" max="81" value="15"/></label><label class="range-block">Жёсткость <span id="hardnessValue">55%</span><input id="hardnessRange" data-brush-key="hardness" type="range" min="0" max="100" value="55"/></label><label>Профиль края<select id="falloffSelect" data-brush-key="falloff" class="select"><option value="soft">Soft</option><option value="hard">Hard</option><option value="linear">Linear</option><option value="gaussian">Gaussian</option><option value="custom">Custom</option></select></label><label class="range-block">Custom falloff <span id="customFalloffValue">55%</span><input id="customFalloffRange" data-brush-key="customFalloff" type="range" min="0" max="100" value="55"/></label><label class="range-block">Сила / Opacity <span id="opacityValue">100%</span><input id="opacityRange" data-brush-key="opacity" type="range" min="1" max="100" value="100"/></label><label class="range-block">Поток / Flow <span id="flowValue">22%</span><input id="flowRange" data-brush-key="flow" type="range" min="1" max="100" value="22"/></label><label class="range-block">Интервал / Spacing <span id="spacingValue">14%</span><input id="spacingRange" data-brush-key="spacing" type="range" min="1" max="250" value="14"/></label><label class="range-block">Сглаживание <span id="smoothingValue">24%</span><input id="smoothingRange" data-brush-key="smoothing" type="range" min="0" max="100" value="24"/></label><label class="range-block">Stabilizer <span id="stabilizerValue">0%</span><input id="stabilizerRange" data-brush-key="stabilizer" type="range" min="0" max="100" value="0"/></label><label class="toggle full"><input id="airbrushToggle" data-brush-key="airbrush" type="checkbox"/><span>Airbrush / Build-up</span></label><label class="range-block">Build-up rate <span id="buildUpRateValue">65%</span><input id="buildUpRateRange" data-brush-key="buildUpRate" type="range" min="1" max="100" value="65"/></label></div></details>
+<details class="settings-group"><summary>Brush Tip</summary><div class="settings-body"><label>Форма<select id="tipSelect" data-brush-key="tip" class="select"><option value="circle">Круг</option><option value="square">Квадрат</option><option value="ellipse">Эллипс</option><option value="line">Линия</option><option value="diamond">Ромб</option><option value="custom">Custom mask</option><option value="pattern">ASCII pattern</option></select></label><label class="range-block">Округлость <span id="roundnessValue">100%</span><input id="roundnessRange" data-brush-key="roundness" type="range" min="5" max="100" value="100"/></label><label class="range-block">Угол <span id="angleValue">0°</span><input id="angleRange" data-brush-key="angle" type="range" min="-180" max="180" value="0"/></label><label class="field-label">Custom tip mask</label><textarea id="customTipInput" data-brush-key="customTip" rows="7" spellcheck="false">...#...
+..###..
+.#####.
+#######
+.#####.
+..###..
+...#...</textarea><label class="field-label">Pattern</label><textarea id="patternInput" data-brush-key="pattern" rows="3" spellcheck="false">/\/\
+\/\/</textarea></div></details>
+<details class="settings-group"><summary>Shape Dynamics</summary><div class="settings-body"><label class="range-block">Size Jitter <span id="sizeJitterValue">0%</span><input id="sizeJitterRange" data-brush-key="sizeJitter" type="range" min="0" max="100" value="0"/></label><label class="range-block">Minimum Diameter <span id="minDiameterValue">20%</span><input id="minDiameterRange" data-brush-key="minDiameter" type="range" min="1" max="100" value="20"/></label><label class="range-block">Angle Jitter <span id="angleJitterValue">0%</span><input id="angleJitterRange" data-brush-key="angleJitter" type="range" min="0" max="100" value="0"/></label><label class="range-block">Roundness Jitter <span id="roundnessJitterValue">0%</span><input id="roundnessJitterRange" data-brush-key="roundnessJitter" type="range" min="0" max="100" value="0"/></label></div></details>
+<details class="settings-group"><summary>Scatter</summary><div class="settings-body"><label class="toggle full"><input id="scatterEnabled" data-brush-key="scatterEnabled" type="checkbox"/><span>Включить разброс</span></label><label class="range-block">Scatter X <span id="scatterXValue">0%</span><input id="scatterXRange" data-brush-key="scatterX" type="range" min="0" max="200" value="0"/></label><label class="range-block">Scatter Y <span id="scatterYValue">0%</span><input id="scatterYRange" data-brush-key="scatterY" type="range" min="0" max="200" value="0"/></label><label class="range-block">Count <span id="countValue">1</span><input id="countRange" data-brush-key="count" type="range" min="1" max="16" value="1"/></label><label class="range-block">Count Jitter <span id="countJitterValue">0%</span><input id="countJitterRange" data-brush-key="countJitter" type="range" min="0" max="100" value="0"/></label></div></details>
+<details class="settings-group"><summary>Glyph Dynamics</summary><div class="settings-body"><label class="range-block">Character Jitter <span id="glyphJitterValue">0%</span><input id="glyphJitterRange" data-brush-key="glyphJitter" type="range" min="0" max="100" value="0"/></label><label class="range-block">Density Jitter <span id="densityJitterValue">0%</span><input id="densityJitterRange" data-brush-key="densityJitter" type="range" min="0" max="100" value="0"/></label><label class="range-block">Color Jitter <span id="colorJitterValue">0%</span><input id="colorJitterRange" data-brush-key="colorJitter" type="range" min="0" max="100" value="0"/></label><label class="toggle full"><input id="glyphSequenceToggle" data-brush-key="glyphSequence" type="checkbox"/><span>Glyph Sequence</span></label><label class="toggle full"><input id="directionGlyphsToggle" data-brush-key="directionGlyphs" type="checkbox"/><span>Direction Glyphs</span></label><label class="toggle full"><input id="orientationGlyphsToggle" data-brush-key="orientationGlyphs" type="checkbox"/><span>Orientation Glyphs (- | / \)</span></label></div></details>
+<details class="settings-group"><summary>Velocity / Pressure / Tilt</summary><div class="settings-body"><label class="range-block">Speed → Size <span id="speedSizeValue">0%</span><input id="speedSizeRange" data-brush-key="speedSize" type="range" min="0" max="100" value="0"/></label><label class="range-block">Speed → Density <span id="speedDensityValue">0%</span><input id="speedDensityRange" data-brush-key="speedDensity" type="range" min="0" max="100" value="0"/></label><div class="toggle-grid"><label class="toggle"><input id="pressureSize" data-brush-key="pressureSize" type="checkbox"/><span>Pressure → Size</span></label><label class="toggle"><input id="pressureFlow" data-brush-key="pressureFlow" type="checkbox"/><span>Pressure → Flow</span></label><label class="toggle"><input id="pressureDensity" data-brush-key="pressureDensity" type="checkbox"/><span>Pressure → Density</span></label><label class="toggle"><input id="pressureScatter" data-brush-key="pressureScatter" type="checkbox"/><span>Pressure → Scatter</span></label><label class="toggle"><input id="tiltAngle" data-brush-key="tiltAngle" type="checkbox"/><span>Tilt → Angle</span></label></div></div></details>
+<details class="settings-group"><summary>Texture / Dual Brush</summary><div class="settings-body"><label>Texture<select id="textureSelect" data-brush-key="texture" class="select"><option value="none">None</option><option value="hatch">Hatch</option><option value="crosshatch">Cross Hatch</option><option value="dots">Dots</option><option value="checker">Checker</option><option value="noise">Noise</option><option value="matrix">Matrix</option><option value="bricks">Bricks</option></select></label><label class="range-block">Texture Scale <span id="textureScaleValue">3</span><input id="textureScaleRange" data-brush-key="textureScale" type="range" min="1" max="12" value="3"/></label><label class="range-block">Texture Strength <span id="textureStrengthValue">55%</span><input id="textureStrengthRange" data-brush-key="textureStrength" type="range" min="0" max="100" value="55"/></label><label class="toggle full"><input id="dualBrush" data-brush-key="dualBrush" type="checkbox"/><span>Dual Brush</span></label><label>Вторая форма<select id="dualTip" data-brush-key="dualTip" class="select"><option value="circle">Круг</option><option value="square">Квадрат</option><option value="diamond">Ромб</option><option value="line">Линия</option></select></label><label class="range-block">Dual Size <span id="dualSizeValue">62%</span><input id="dualSizeRange" data-brush-key="dualSize" type="range" min="10" max="150" value="62"/></label></div></details>
+<details class="settings-group"><summary>Умная кисть</summary><div class="settings-body"><label class="range-block">Preserve Detail <span id="preserveDetailValue">0%</span><input id="preserveDetailRange" data-brush-key="preserveDetail" type="range" min="0" max="100" value="0"/></label><label>Edges<select id="edgeMode" data-brush-key="edgeMode" class="select"><option value="none">Off</option><option value="protect">Protect</option><option value="enhance">Enhance</option></select></label><label class="range-block">Edge Strength <span id="edgeStrengthValue">50%</span><input id="edgeStrengthRange" data-brush-key="edgeStrength" type="range" min="0" max="100" value="50"/></label><label class="toggle full"><input id="directionalShading" data-brush-key="directionalShading" type="checkbox"/><span>Directional Shading</span></label><label class="range-block">Направление света <span id="lightAngleValue">315°</span><input id="lightAngleRange" data-brush-key="lightAngle" type="range" min="0" max="359" value="315"/></label></div></details>
+<details class="settings-group"><summary>Stroke / Symmetry</summary><div class="settings-body"><label>Snap angle<select id="snapAngle" data-brush-key="snapAngle" class="select"><option value="0">Off</option><option value="15">15°</option><option value="30">30°</option><option value="45">45°</option><option value="90">90°</option></select></label><label>Symmetry<select id="symmetry" data-brush-key="symmetry" class="select"><option value="none">Off</option><option value="mirrorX">Mirror X</option><option value="mirrorY">Mirror Y</option><option value="mirrorXY">Mirror X+Y</option><option value="radial4">Radial 4</option><option value="radial8">Radial 8</option></select></label><label class="field-label">Random Seed</label><input id="seedInput" data-brush-key="seed" type="number" min="1" max="999999999" value="1337"/></div></details>
+<details class="settings-group"><summary>Lock параметров</summary><div class="settings-body lock-grid" id="lockGrid"></div></details>
+<details class="settings-group"><summary>Экран / CRT</summary><div class="settings-body"><div class="theme-switch"><button id="nightThemeBtn" class="theme-button active" data-theme-value="night">☾ Ночь</button><button id="dayThemeBtn" class="theme-button" data-theme-value="day">☀ День</button></div><label class="toggle full"><input id="fishEyeToggle" type="checkbox"/><span>Эффект рыбьего глаза</span></label><label class="range-block">Сила изгиба <span id="fishEyeLabel">24%</span><input id="fishEyeRange" type="range" min="0" max="100" value="24"/></label><label class="toggle full"><input id="scanlinesToggle" type="checkbox" checked/><span>Строки развёртки</span></label><label class="range-block">Свечение <span id="glowLabel">45%</span><input id="glowRange" type="range" min="0" max="100" value="45"/></label></div></details>
+<details class="settings-group"><summary>Изображение → ASCII</summary><div class="settings-body"><label class="drop-zone" for="imageInput"><input id="imageInput" type="file" accept="image/*" hidden/><span class="drop-icon">↥</span><strong>Загрузить изображение</strong><small>PNG, JPG, WEBP</small></label><div class="stack-actions"><button id="convertImageBtn" class="button primary" disabled>Конвертировать</button><button id="fitImageGridBtn" class="button ghost" disabled>Подогнать сетку</button></div><label class="toggle full"><input id="invertToggle" type="checkbox"/><span>Инвертировать яркость</span></label><label class="toggle full"><input id="sourceColorToggle" type="checkbox"/><span>Цвет из изображения</span></label><label class="range-block">Контраст <span id="contrastLabel">100%</span><input id="contrastRange" type="range" min="50" max="220" value="100"/></label><label class="toggle full"><input id="referenceToggle" type="checkbox" disabled/><span>Показывать подложку</span></label><label class="range-block">Подложка <span id="referenceOpacityLabel">28%</span><input id="referenceOpacity" type="range" min="5" max="90" value="28" disabled/></label></div></details>
+<details class="settings-group"><summary>Файл / Проект</summary><div class="settings-body stack-actions"><button id="exportTxtBtn" class="button">Скачать TXT</button><button id="importTxtBtn" class="button ghost">Импорт TXT</button><input id="txtInput" type="file" accept=".txt,text/plain" hidden/><button id="exportProjectBtn" class="button">Скачать .glyph</button><button id="importProjectBtn" class="button ghost">Открыть .glyph</button><input id="projectInput" type="file" accept=".glyph,application/json" hidden/><button id="exportBrushBtn" class="button">Скачать .gbrush</button><button id="importBrushBtn" class="button ghost">Импорт .gbrush</button><input id="brushFileInput" type="file" accept=".gbrush,application/json" hidden/><button id="clearBtn" class="button danger-ghost">Очистить холст</button></div></details>
+</aside></main></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="brush-engine.js"></script><script src="app-v3.js"></script><script src="canvas-fit.js"></script><script src="fisheye.js"></script>
+</body></html>
