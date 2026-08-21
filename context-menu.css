@@ -1,0 +1,39 @@
+/* GlyphForge contextual menu system */
+.gf-context-root{
+  position:fixed;inset:0;z-index:5000;pointer-events:none;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace
+}
+.gf-context-menu{
+  --menu-bg:color-mix(in srgb,var(--panel) 98%,#000 2%);
+  position:fixed;min-width:232px;max-width:320px;padding:5px;border:1px solid color-mix(in srgb,var(--line2) 82%,transparent);
+  border-radius:7px;background:var(--menu-bg);box-shadow:0 18px 46px rgba(0,0,0,.54),inset 0 0 0 1px rgba(255,255,255,.012);
+  pointer-events:auto;user-select:none;outline:none;animation:gfContextIn .085s ease-out;backdrop-filter:blur(12px)
+}
+html[data-theme="day"] .gf-context-menu{--menu-bg:color-mix(in srgb,var(--panel) 97%,white 3%);box-shadow:0 16px 38px rgba(40,44,36,.24)}
+@keyframes gfContextIn{from{opacity:0;transform:translateY(-2px) scale(.992)}to{opacity:1;transform:none}}
+.gf-context-header{padding:7px 9px 6px;border-bottom:1px solid var(--line);margin:0 1px 4px}
+.gf-context-header strong{display:block;font-size:9px;line-height:1.25;color:var(--text);font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gf-context-header small{display:block;margin-top:2px;color:var(--muted);font-size:7px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gf-context-separator{height:1px;margin:4px 5px;background:var(--line)}
+.gf-context-item{
+  position:relative;width:100%;min-height:29px;display:grid;grid-template-columns:20px minmax(0,1fr) auto 13px;align-items:center;gap:6px;
+  padding:4px 7px;border:0;border-radius:4px;background:transparent;color:var(--text);text-align:left;cursor:default;font-size:8px;line-height:1.25
+}
+.gf-context-item:hover,.gf-context-item.active,.gf-context-item:focus-visible{background:color-mix(in srgb,var(--accent) 9%,var(--panel2));outline:none}
+.gf-context-item.active{color:color-mix(in srgb,var(--text) 92%,var(--accent))}
+.gf-context-item.disabled{opacity:.34;pointer-events:none}
+.gf-context-item.danger{color:var(--danger)}
+.gf-context-item.danger:hover,.gf-context-item.danger.active{background:color-mix(in srgb,var(--danger) 9%,var(--panel2))}
+.gf-context-icon{width:20px;text-align:center;color:var(--muted);font-size:10px}
+.gf-context-check{color:var(--accent);font-weight:900}
+.gf-context-label{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gf-context-shortcut{padding-left:12px;color:var(--muted);font-size:7px;white-space:nowrap}
+.gf-context-arrow{color:var(--muted);font-size:9px;text-align:right}
+.gf-context-submenu{display:none;position:fixed}
+.gf-context-item.submenu-open>.gf-context-arrow{color:var(--accent)}
+.gf-context-item-title{color:var(--muted);font-size:7px;text-transform:uppercase;letter-spacing:.08em;padding:5px 9px 3px}
+.gf-context-color-chip{width:12px;height:12px;border:1px solid var(--line2);border-radius:3px;background:var(--chip-color,transparent);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+.gf-context-value{color:var(--muted)}
+.gf-context-menu.compact{min-width:196px}
+.gf-context-menu.wide{min-width:270px}
+body.gf-context-open{cursor:default}
+@media (max-width:760px){.gf-context-menu{min-width:210px;max-width:calc(100vw - 16px)}}
