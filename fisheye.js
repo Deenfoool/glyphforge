@@ -2,23 +2,18 @@
   'use strict';
 
   const screen = document.getElementById('crtScreen');
-  const canvas = document.getElementById('asciiCanvas');
+  const source = document.getElementById('asciiCanvas');
   const toggle = document.getElementById('fishEyeToggle');
   const range = document.getElementById('fishEyeRange');
 
-  if (!screen || !canvas || !toggle || !range) return;
+  if (!screen || !source || !toggle || !range || !source.parentElement) return;
 
-  const SVG_NS = 'http://www.w3.org/2000/svg';
-  const XLINK_NS = 'http://www.w3.org/1999/xlink';
-  const FILTER_ID = 'glyphforgeBarrelFilter';
-  const MAP_ID = 'glyphforgeBarrelMap';
-  const DISPLACEMENT_ID = 'glyphforgeBarrelDisplacement';
-  const MAP_SIZE = 384;
-  const MAX_SCALE_RATIO = 0.48;
-  const activeCanvasPointers = new Set();
+  const ACTIVE_CLASS = 'glyphforge-fisheye-active';
+  const OUTPUT_ID = 'glyphforgeFisheyeCanvas';
+  const activePointers = new Set();
 
-  let mapAspectRatio = 0;
-  let resizeFrame = 0;
+  let renderer = null;
+  let animationFrame = 0;
 
   function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
@@ -28,114 +23,47 @@
     return clamp(Number(range.value) || 0, 0, 100);
   }
 
-  function lensVector(nx, ny, aspectRatio) {
-    const aspect = Math.max(0.1, aspectRatio || 1);
-    const diagonal = Math.hypot(aspect, 1);
-    const radius = clamp(Math.hypot(nx * aspect, ny) / diagonal, 0, 1);
-    const radiusSquared = radius * radius;
-    const curve = radiusSquared * (0.52 + 0.48 * radiusSquared);
-
-    return {
-      x: nx * curve,
-      y: ny * curve
-    };
+  function getIntensity() {
+    return Math.pow(getStrength() / 100, 0.8);
   }
 
-  function createDisplacementMap(aspectRatio) {
-    const mapCanvas = document.createElement('canvas');
-    mapCanvas.width = MAP_SIZE;
-    mapCanvas.height = MAP_SIZE;
-
-    const mapContext = mapCanvas.getContext('2d');
-    const image = mapContext.createImageData(MAP_SIZE, MAP_SIZE);
-    const pixels = image.data;
-
-    for (let y = 0; y < MAP_SIZE; y++) {
-      const ny = (y / (MAP_SIZE - 1)) * 2 - 1;
-
-      for (let x = 0; x < MAP_SIZE; x++) {
-        const nx = (x / (MAP_SIZE - 1)) * 2 - 1;
-        const vector = lensVector(nx, ny, aspectRatio);
-        const offset = (y * MAP_SIZE + x) * 4;
-
-        pixels[offset] = Math.round(127.5 + vector.x * 127.5);
-        pixels[offset + 1] = Math.round(127.5 + vector.y * 127.5);
-        pixels[offset + 2] = 128;
-        pixels[offset + 3] = 255;
-      }
-    }
-
-    mapContext.putImageData(image, 0, 0);
-    return mapCanvas.toDataURL('image/png');
+  function isEnabled() {
+    return toggle.checked && getStrength() > 0;
   }
 
-  function installSvgFilter() {
-    const existing = document.getElementById(FILTER_ID);
-    if (existing) {
-      return {
-        map: document.getElementById(MAP_ID),
-        displacement: document.getElementById(DISPLACEMENT_ID)
-      };
-    }
-
-    const svg = document.createElementNS(SVG_NS, 'svg');
-    svg.setAttribute('width', '0');
-    svg.setAttribute('height', '0');
-    svg.setAttribute('focusable', 'false');
-    svg.setAttribute('aria-hidden', 'true');
-    svg.style.position = 'absolute';
-    svg.style.width = '0';
-    svg.style.height = '0';
-    svg.style.overflow = 'hidden';
-    svg.style.pointerEvents = 'none';
-
-    const defs = document.createElementNS(SVG_NS, 'defs');
-    const filter = document.createElementNS(SVG_NS, 'filter');
-    filter.id = FILTER_ID;
-    filter.setAttribute('x', '0%');
-    filter.setAttribute('y', '0%');
-    filter.setAttribute('width', '100%');
-    filter.setAttribute('height', '100%');
-    filter.setAttribute('filterUnits', 'objectBoundingBox');
-    filter.setAttribute('color-interpolation-filters', 'sRGB');
-
-    const map = document.createElementNS(SVG_NS, 'feImage');
-    map.id = MAP_ID;
-    map.setAttribute('x', '0%');
-    map.setAttribute('y', '0%');
-    map.setAttribute('width', '100%');
-    map.setAttribute('height', '100%');
-    map.setAttribute('preserveAspectRatio', 'none');
-    map.setAttribute('result', 'barrelMap');
-
-    const displacement = document.createElementNS(SVG_NS, 'feDisplacementMap');
-    displacement.id = DISPLACEMENT_ID;
-    displacement.setAttribute('in', 'SourceGraphic');
-    displacement.setAttribute('in2', 'barrelMap');
-    displacement.setAttribute('scale', '0');
-    displacement.setAttribute('xChannelSelector', 'R');
-    displacement.setAttribute('yChannelSelector', 'G');
-
-    filter.append(map, displacement);
-    defs.appendChild(filter);
-    svg.appendChild(defs);
-    document.body.appendChild(svg);
-
-    return { map, displacement };
-  }
-
-  function installLensStyles() {
+  function installStyles() {
     if (document.getElementById('glyphforge-fisheye-styles')) return;
 
     const style = document.createElement('style');
     style.id = 'glyphforge-fisheye-styles';
     style.textContent = `
       .crt-screen.fisheye {
+        filter: none !important;
         transform: none !important;
-        filter: url(#${FILTER_ID});
-        border-radius: var(--crt-lens-radius, 26px) !important;
-        clip-path: inset(0 round var(--crt-lens-radius, 26px));
-        will-change: filter;
+        border-radius: var(--crt-lens-radius, 25px) !important;
+        clip-path: inset(0 round var(--crt-lens-radius, 25px));
+      }
+
+      .crt-screen.${ACTIVE_CLASS} #asciiCanvas {
+        opacity: 0 !important;
+      }
+
+      #${OUTPUT_ID} {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+        display: block;
+        pointer-events: none;
+        image-rendering: auto;
+      }
+
+      #${OUTPUT_ID}[hidden] {
+        display: none !important;
+      }
+
+      .crt-screen.${ACTIVE_CLASS} .cursor-info {
+        z-index: 2;
       }
 
       .crt-screen.fisheye::before {
@@ -148,22 +76,15 @@
         opacity: var(--crt-lens-overlay, .55);
         background:
           radial-gradient(ellipse at 50% 49%,
-            transparent 36%,
-            rgba(0, 0, 0, .08) 65%,
+            transparent 35%,
+            rgba(0, 0, 0, .08) 64%,
             rgba(0, 0, 0, .48) 100%),
-          radial-gradient(ellipse at 50% -46%,
-            rgba(255, 255, 255, .11) 0%,
-            rgba(255, 255, 255, .035) 35%,
-            transparent 65%),
-          linear-gradient(118deg,
-            rgba(255, 255, 255, .055) 0%,
-            transparent 19% 77%,
-            rgba(255, 255, 255, .018) 100%);
-        box-shadow:
-          inset 0 0 var(--crt-lens-edge, 64px)
-            rgba(0, 0, 0, var(--crt-lens-darkness, .32)),
-          inset 0 0 10px
-            color-mix(in srgb, var(--accent) 9%, transparent);
+          radial-gradient(ellipse at 50% -45%,
+            rgba(255, 255, 255, .12) 0%,
+            rgba(255, 255, 255, .03) 35%,
+            transparent 65%);
+        box-shadow: inset 0 0 var(--crt-lens-edge, 64px)
+          rgba(0, 0, 0, var(--crt-lens-darkness, .32));
       }
 
       html[data-theme="day"] .crt-screen.fisheye::before {
@@ -172,97 +93,274 @@
             transparent 42%,
             rgba(0, 0, 0, .055) 70%,
             rgba(0, 0, 0, .28) 100%),
-          radial-gradient(ellipse at 50% -46%,
+          radial-gradient(ellipse at 50% -45%,
             rgba(255, 255, 255, .22) 0%,
             rgba(255, 255, 255, .07) 35%,
-            transparent 68%),
-          linear-gradient(118deg,
-            rgba(255, 255, 255, .12) 0%,
-            transparent 20% 76%,
-            rgba(255, 255, 255, .035) 100%);
+            transparent 68%);
       }
     `;
 
     document.head.appendChild(style);
   }
 
-  const filter = installSvgFilter();
-  installLensStyles();
+  function createOutputCanvas() {
+    const output = document.createElement('canvas');
+    output.id = OUTPUT_ID;
+    output.setAttribute('aria-hidden', 'true');
+    output.hidden = true;
+    return output;
+  }
 
-  function getGeometry() {
-    const rect = screen.getBoundingClientRect();
-    const width = Math.max(1, rect.width);
-    const height = Math.max(1, rect.height);
+  function compileShader(gl, type, sourceCode) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, sourceCode);
+    gl.compileShader(shader);
+
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      gl.deleteShader(shader);
+      return null;
+    }
+
+    return shader;
+  }
+
+  function createWebGlRenderer(output) {
+    const gl = output.getContext('webgl', {
+      alpha: true,
+      antialias: true,
+      depth: false,
+      stencil: false,
+      premultipliedAlpha: false
+    }) || output.getContext('experimental-webgl');
+
+    if (!gl) return null;
+
+    const vertexSource = `
+      attribute vec2 a_position;
+      varying vec2 v_uv;
+
+      void main() {
+        v_uv = vec2(a_position.x * 0.5 + 0.5, 0.5 - a_position.y * 0.5);
+        gl_Position = vec4(a_position, 0.0, 1.0);
+      }
+    `;
+
+    const fragmentSource = `
+      precision mediump float;
+
+      uniform sampler2D u_image;
+      uniform float u_strength;
+      varying vec2 v_uv;
+
+      void main() {
+        vec2 position = v_uv * 2.0 - 1.0;
+        float radiusSquared = dot(position, position) * 0.5;
+        float curve = 1.0 + u_strength *
+          (0.42 * radiusSquared + 0.28 * radiusSquared * radiusSquared);
+        float zoom = 1.0 - u_strength * 0.12;
+        vec2 sampleUv = position * curve * zoom * 0.5 + 0.5;
+
+        if (sampleUv.x < 0.0 || sampleUv.x > 1.0 ||
+            sampleUv.y < 0.0 || sampleUv.y > 1.0) {
+          discard;
+        }
+
+        gl_FragColor = texture2D(u_image, sampleUv);
+      }
+    `;
+
+    const vertex = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
+    const fragment = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+    if (!vertex || !fragment) return null;
+
+    const program = gl.createProgram();
+    gl.attachShader(program, vertex);
+    gl.attachShader(program, fragment);
+    gl.linkProgram(program);
+
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
+
+    gl.useProgram(program);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      -1, -1, 1, -1, -1, 1, 1, 1
+    ]), gl.STATIC_DRAW);
+
+    const position = gl.getAttribLocation(program, 'a_position');
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.uniform1i(gl.getUniformLocation(program, 'u_image'), 0);
+
+    const strengthLocation = gl.getUniformLocation(program, 'u_strength');
 
     return {
-      rect,
-      width,
-      height,
-      aspectRatio: width / height,
-      shortSide: Math.min(width, height)
+      type: 'webgl',
+      output,
+
+      draw(intensity) {
+        gl.viewport(0, 0, output.width, output.height);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.uniform1f(strengthLocation, intensity);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,
+          gl.UNSIGNED_BYTE, source);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
     };
   }
 
-  function getFilterScale(geometry = getGeometry()) {
-    const strength = getStrength() / 100;
-    const perceptualStrength = Math.pow(strength, 0.82);
+  function createCanvasRenderer(output) {
+    const context = output.getContext('2d', { alpha: true });
+    if (!context) return null;
 
-    return geometry.shortSide * MAX_SCALE_RATIO * perceptualStrength;
+    const intermediate = document.createElement('canvas');
+    const intermediateContext = intermediate.getContext('2d', { alpha: true });
+    if (!intermediateContext) return null;
+
+    return {
+      type: 'canvas',
+      output,
+
+      draw(intensity) {
+        const width = output.width;
+        const height = output.height;
+
+        if (intermediate.width !== width) intermediate.width = width;
+        if (intermediate.height !== height) intermediate.height = height;
+
+        intermediateContext.clearRect(0, 0, width, height);
+        context.clearRect(0, 0, width, height);
+
+        const rowStep = Math.max(2, Math.ceil(height / 220));
+        const columnStep = Math.max(2, Math.ceil(width / 260));
+
+        for (let y = 0; y < height; y += rowStep) {
+          const stripe = Math.min(rowStep + 1, height - y);
+          const ny = ((y + stripe / 2) / height) * 2 - 1;
+          const scale = 1 + intensity * (0.08 - 0.27 * ny * ny);
+          const scaledWidth = width * scale;
+
+          intermediateContext.drawImage(source,
+            0, y, width, stripe,
+            (width - scaledWidth) / 2, y, scaledWidth, stripe);
+        }
+
+        for (let x = 0; x < width; x += columnStep) {
+          const stripe = Math.min(columnStep + 1, width - x);
+          const nx = ((x + stripe / 2) / width) * 2 - 1;
+          const scale = 1 + intensity * (0.08 - 0.27 * nx * nx);
+          const scaledHeight = height * scale;
+
+          context.drawImage(intermediate,
+            x, 0, stripe, height,
+            x, (height - scaledHeight) / 2, stripe, scaledHeight);
+        }
+      }
+    };
   }
 
-  function updateDisplacementMap(geometry) {
-    if (!filter.map || Math.abs(geometry.aspectRatio - mapAspectRatio) < 0.012) {
-      return;
+  function ensureRenderer() {
+    if (renderer) return renderer;
+
+    let output = createOutputCanvas();
+
+    try {
+      renderer = createWebGlRenderer(output);
+    } catch {
+      renderer = null;
     }
 
-    const imageUrl = createDisplacementMap(geometry.aspectRatio);
-    filter.map.setAttribute('href', imageUrl);
-    filter.map.setAttributeNS(XLINK_NS, 'xlink:href', imageUrl);
-    mapAspectRatio = geometry.aspectRatio;
+    if (!renderer) {
+      output = createOutputCanvas();
+      renderer = createCanvasRenderer(output);
+    }
+
+    if (!renderer) return null;
+
+    source.parentElement.insertBefore(output, source.nextSibling);
+    return renderer;
   }
 
-  function updateBarrelDistortion() {
-    const geometry = getGeometry();
+  function repaint() {
+    animationFrame = 0;
+
+    if (!isEnabled() || !renderer || !source.width || !source.height) return;
+
+    const output = renderer.output;
+    if (output.width !== source.width) output.width = source.width;
+    if (output.height !== source.height) output.height = source.height;
+
+    output.style.width = `${source.offsetWidth || source.width}px`;
+    output.style.height = `${source.offsetHeight || source.height}px`;
+    renderer.draw(getIntensity());
+  }
+
+  function requestRepaint() {
+    if (!isEnabled() || animationFrame) return;
+    animationFrame = window.requestAnimationFrame(repaint);
+  }
+
+  function updateLens() {
     const strength = getStrength();
-    const enabled = toggle.checked && strength > 0;
-    const scale = enabled ? getFilterScale(geometry) : 0;
+    const enabled = isEnabled() && Boolean(ensureRenderer());
 
-    if (enabled) updateDisplacementMap(geometry);
-
-    filter.displacement.setAttribute('scale', scale.toFixed(2));
-    screen.style.setProperty('--crt-lens-radius', `${19 + strength * 0.34}px`);
+    screen.classList.toggle(ACTIVE_CLASS, enabled);
+    screen.style.setProperty('--crt-lens-radius', `${18 + strength * 0.36}px`);
     screen.style.setProperty('--crt-lens-edge', `${35 + strength * 0.82}px`);
     screen.style.setProperty('--crt-lens-darkness', String(0.16 + strength * 0.0035));
     screen.style.setProperty('--crt-lens-overlay', String(0.34 + strength * 0.0049));
+
+    if (renderer) renderer.output.hidden = !enabled;
+
+    if (enabled) requestRepaint();
+    else if (animationFrame) {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = 0;
+    }
   }
 
-  function scheduleGeometryUpdate() {
-    if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
-
-    resizeFrame = window.requestAnimationFrame(() => {
-      resizeFrame = 0;
-      updateBarrelDistortion();
-    });
-  }
-
-  function sourcePointForDisplayedPoint(clientX, clientY) {
-    const geometry = getGeometry();
-    const { rect, aspectRatio } = geometry;
-
+  function getSourcePoint(clientX, clientY) {
+    const rect = source.getBoundingClientRect();
     if (!rect.width || !rect.height) return { x: clientX, y: clientY };
 
-    const nx = clamp(((clientX - rect.left) / rect.width) * 2 - 1, -1, 1);
-    const ny = clamp(((clientY - rect.top) / rect.height) * 2 - 1, -1, 1);
-    const vector = lensVector(nx, ny, aspectRatio);
-    const halfScale = getFilterScale(geometry) * 0.5;
+    const nx = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const ny = ((clientY - rect.top) / rect.height) * 2 - 1;
+    const intensity = getIntensity();
+    let sampleX;
+    let sampleY;
+
+    if (renderer && renderer.type === 'canvas') {
+      const verticalScale = 1 + intensity * (0.08 - 0.27 * nx * nx);
+      sampleY = ny / verticalScale;
+
+      const horizontalScale = 1 + intensity * (0.08 - 0.27 * sampleY * sampleY);
+      sampleX = nx / horizontalScale;
+    } else {
+      const radiusSquared = (nx * nx + ny * ny) * 0.5;
+      const curve = 1 + intensity *
+        (0.42 * radiusSquared + 0.28 * radiusSquared * radiusSquared);
+      const zoom = 1 - intensity * 0.12;
+
+      sampleX = nx * curve * zoom;
+      sampleY = ny * curve * zoom;
+    }
 
     return {
-      x: clientX + vector.x * halfScale,
-      y: clientY + vector.y * halfScale
+      x: rect.left + (sampleX + 1) * rect.width * 0.5,
+      y: rect.top + (sampleY + 1) * rect.height * 0.5
     };
   }
 
-  function clonePointerEvent(event, clientX, clientY) {
+  function clonePointer(event, point) {
     return new PointerEvent(event.type, {
       bubbles: true,
       cancelable: true,
@@ -279,10 +377,10 @@
       isPrimary: event.isPrimary,
       button: event.button,
       buttons: event.buttons,
-      clientX,
-      clientY,
-      screenX: event.screenX + (clientX - event.clientX),
-      screenY: event.screenY + (clientY - event.clientY),
+      clientX: point.x,
+      clientY: point.y,
+      screenX: event.screenX + point.x - event.clientX,
+      screenY: event.screenY + point.y - event.clientY,
       ctrlKey: event.ctrlKey,
       shiftKey: event.shiftKey,
       altKey: event.altKey,
@@ -291,45 +389,75 @@
   }
 
   function remapCanvasPointer(event) {
-    if (!event.isTrusted || !toggle.checked || getStrength() <= 0) return;
+    if (!event.isTrusted || !isEnabled() || !renderer) return;
 
-    if (event.type === 'pointerdown') {
-      activeCanvasPointers.add(event.pointerId);
+    if (event.type === 'pointerdown') activePointers.add(event.pointerId);
+
+    const point = getSourcePoint(event.clientX, event.clientY);
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    source.dispatchEvent(clonePointer(event, point));
+    requestRepaint();
+  }
+
+  function remapPointerUp(event) {
+    if (!event.isTrusted || !activePointers.has(event.pointerId)) return;
+    activePointers.delete(event.pointerId);
+
+    if (!isEnabled() || !renderer) return;
+
+    const point = getSourcePoint(event.clientX, event.clientY);
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    window.dispatchEvent(clonePointer(event, point));
+    requestRepaint();
+  }
+
+  function observeSourceRendering() {
+    const context = source.getContext('2d');
+    if (!context || typeof context.restore !== 'function') return;
+
+    const originalRestore = context.restore.bind(context);
+
+    try {
+      context.restore = function (...args) {
+        const result = originalRestore(...args);
+        requestRepaint();
+        return result;
+      };
+    } catch {
+      document.addEventListener('input', requestRepaint, true);
+      document.addEventListener('click', requestRepaint, true);
+      document.addEventListener('keydown', requestRepaint, true);
     }
-
-    const point = sourcePointForDisplayedPoint(event.clientX, event.clientY);
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    canvas.dispatchEvent(clonePointerEvent(event, point.x, point.y));
   }
 
-  function remapWindowPointerUp(event) {
-    if (!event.isTrusted || !activeCanvasPointers.has(event.pointerId)) return;
+  installStyles();
+  observeSourceRendering();
 
-    activeCanvasPointers.delete(event.pointerId);
-
-    if (!toggle.checked || getStrength() <= 0) return;
-
-    const point = sourcePointForDisplayedPoint(event.clientX, event.clientY);
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    window.dispatchEvent(clonePointerEvent(event, point.x, point.y));
-  }
-
-  canvas.addEventListener('pointerdown', remapCanvasPointer, true);
-  canvas.addEventListener('pointermove', remapCanvasPointer, true);
-  window.addEventListener('pointerup', remapWindowPointerUp, true);
+  source.addEventListener('pointerdown', remapCanvasPointer, true);
+  source.addEventListener('pointermove', remapCanvasPointer, true);
+  window.addEventListener('pointerup', remapPointerUp, true);
   window.addEventListener('pointercancel', event => {
-    activeCanvasPointers.delete(event.pointerId);
+    activePointers.delete(event.pointerId);
   }, true);
 
-  toggle.addEventListener('change', updateBarrelDistortion);
-  range.addEventListener('input', updateBarrelDistortion);
-  window.addEventListener('resize', scheduleGeometryUpdate);
+  toggle.addEventListener('change', updateLens);
+  range.addEventListener('input', updateLens);
+  window.addEventListener('resize', requestRepaint);
 
   if (typeof ResizeObserver === 'function') {
-    new ResizeObserver(scheduleGeometryUpdate).observe(screen);
+    const observer = new ResizeObserver(requestRepaint);
+    observer.observe(screen);
+    observer.observe(source);
   }
 
-  updateBarrelDistortion();
+  if (typeof MutationObserver === 'function') {
+    new MutationObserver(requestRepaint).observe(source, {
+      attributes: true,
+      attributeFilter: ['width', 'height']
+    });
+  }
+
+  updateLens();
 })();
