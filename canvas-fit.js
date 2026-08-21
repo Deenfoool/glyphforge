@@ -7,65 +7,179 @@
   const rowsInput = document.getElementById('rowsInput');
   const resizeBtn = document.getElementById('resizeBtn');
   const zoomRange = document.getElementById('zoomRange');
+  const zoomLabel = document.getElementById('zoomLabel');
+  const fitImageGridBtn = document.getElementById('fitImageGridBtn');
+  const convertImageBtn = document.getElementById('convertImageBtn');
+  const imageInput = document.getElementById('imageInput');
 
   if (!frame || !canvas || !colsInput || !rowsInput || !resizeBtn) return;
 
   let resizeFrame = 0;
-  let applyingFit = false;
+  let applyingGridFit = false;
+  let fitCanvasEnabled = true;
 
   function numberValue(input, fallback) {
-    const value = Number(input.value);
+    const value = Number(input?.value);
     return Number.isFinite(value) && value > 0 ? value : fallback;
   }
 
-  function fitGridToViewport() {
-    resizeFrame = 0;
-    if (applyingFit || !canvas.width || !canvas.height) return;
+  function clearDisplayFit() {
+    canvas.style.removeProperty('width');
+    canvas.style.removeProperty('height');
+    canvas.dataset.viewportFit = 'false';
+    updateFitButton();
+  }
+
+  function fitCanvasDisplay() {
+    if (!fitCanvasEnabled || !canvas.width || !canvas.height) {
+      clearDisplayFit();
+      return;
+    }
+
+    const availableWidth = Math.max(1, frame.clientWidth - 2);
+    const availableHeight = Math.max(1, frame.clientHeight - 2);
+    if (!availableWidth || !availableHeight) return;
+
+    // Keep the real canvas resolution untouched. Only its CSS display box is
+    // scaled down. Pointer mapping in app-v3.js already uses the ratio between
+    // canvas.width and getBoundingClientRect(), so brushes stay pixel-accurate.
+    const scale = Math.min(
+      1,
+      availableWidth / canvas.width,
+      availableHeight / canvas.height
+    );
+
+    const width = Math.max(1, Math.floor(canvas.width * scale));
+    const height = Math.max(1, Math.floor(canvas.height * scale));
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    canvas.dataset.viewportFit = 'true';
+
+    // A fitted document starts from its top-left corner and never opens with
+    // half of the canvas already scrolled out of view.
+    frame.scrollLeft = 0;
+    frame.scrollTop = 0;
+    updateFitButton();
+  }
+
+  function expandGridToViewport() {
+    if (applyingGridFit || !canvas.width || !canvas.height) return false;
 
     const cols = numberValue(colsInput, 80);
     const rows = numberValue(rowsInput, 42);
     const cellWidth = canvas.width / cols;
     const cellHeight = canvas.height / rows;
 
-    if (!cellWidth || !cellHeight || !frame.clientWidth || !frame.clientHeight) return;
+    if (!cellWidth || !cellHeight || !frame.clientWidth || !frame.clientHeight) return false;
 
-    const maxCols = numberValue({ value: colsInput.max }, 240);
-    const maxRows = numberValue({ value: rowsInput.max }, 160);
-
+    const maxCols = numberValue({ value: colsInput.max }, 360);
+    const maxRows = numberValue({ value: rowsInput.max }, 240);
     const requiredCols = Math.min(maxCols, Math.ceil(frame.clientWidth / cellWidth));
     const requiredRows = Math.min(maxRows, Math.ceil(frame.clientHeight / cellHeight));
     const nextCols = Math.max(cols, requiredCols);
     const nextRows = Math.max(rows, requiredRows);
 
-    if (nextCols === cols && nextRows === rows) return;
+    if (nextCols === cols && nextRows === rows) return false;
 
-    applyingFit = true;
+    applyingGridFit = true;
     colsInput.value = String(nextCols);
     rowsInput.value = String(nextRows);
     resizeBtn.click();
 
     requestAnimationFrame(() => {
-      applyingFit = false;
+      applyingGridFit = false;
       scheduleFit();
     });
+    return true;
+  }
+
+  function fitViewport() {
+    resizeFrame = 0;
+
+    // Preserve the earlier behaviour where an undersized document grows to
+    // cover the available drawing field. Once the grid is large enough, fit
+    // its entire display box back inside the CRT viewport.
+    if (fitCanvasEnabled && expandGridToViewport()) return;
+    fitCanvasDisplay();
   }
 
   function scheduleFit() {
     if (resizeFrame) cancelAnimationFrame(resizeFrame);
-    resizeFrame = requestAnimationFrame(fitGridToViewport);
+    resizeFrame = requestAnimationFrame(fitViewport);
   }
 
+  function setFitCanvas(enabled) {
+    fitCanvasEnabled = Boolean(enabled);
+    if (fitCanvasEnabled) scheduleFit();
+    else clearDisplayFit();
+  }
+
+  function installFitButton() {
+    if (document.getElementById('fitCanvasViewportBtn')) return;
+    const toolbar = zoomLabel?.closest('.editor-toolbar');
+    if (!toolbar || !zoomLabel) return;
+
+    const button = document.createElement('button');
+    button.id = 'fitCanvasViewportBtn';
+    button.type = 'button';
+    button.className = 'button ghost';
+    button.textContent = 'Вписать холст';
+    button.title = 'Показать весь холст целиком внутри рабочей области';
+    button.addEventListener('click', () => setFitCanvas(true));
+    zoomLabel.insertAdjacentElement('afterend', button);
+  }
+
+  function updateFitButton() {
+    const button = document.getElementById('fitCanvasViewportBtn');
+    if (!button) return;
+    button.classList.toggle('active', fitCanvasEnabled);
+    button.textContent = fitCanvasEnabled ? 'Холст вписан' : 'Вписать холст';
+  }
+
+  installFitButton();
+
   if (typeof ResizeObserver !== 'undefined') {
-    const observer = new ResizeObserver(scheduleFit);
+    const observer = new ResizeObserver(() => {
+      if (fitCanvasEnabled) scheduleFit();
+    });
     observer.observe(frame);
     observer.observe(canvas);
   }
 
-  window.addEventListener('resize', scheduleFit);
-  zoomRange?.addEventListener('input', scheduleFit);
-  resizeBtn.addEventListener('click', () => {
-    if (!applyingFit) requestAnimationFrame(scheduleFit);
+  window.addEventListener('resize', () => {
+    if (fitCanvasEnabled) scheduleFit();
   });
+
+  // Any deliberate zoom means the user wants to inspect the document closer.
+  // Disable auto-fit first; clicking "Вписать холст" restores the full view.
+  zoomRange?.addEventListener('input', () => {
+    if (!applyingGridFit) setFitCanvas(false);
+  });
+  frame.addEventListener('wheel', () => setFitCanvas(false), { capture: true, passive: true });
+
+  resizeBtn.addEventListener('click', () => {
+    if (!applyingGridFit && fitCanvasEnabled) requestAnimationFrame(scheduleFit);
+  });
+
+  // Loading or fitting a source image should always leave the complete glyph
+  // canvas visible. The image may be contained correctly while the document
+  // itself is larger than the CRT viewport; this is the bug this controller
+  // fixes.
+  imageInput?.addEventListener('change', () => setFitCanvas(true), true);
+  fitImageGridBtn?.addEventListener('click', () => {
+    setFitCanvas(true);
+    requestAnimationFrame(scheduleFit);
+  });
+  convertImageBtn?.addEventListener('click', () => {
+    setFitCanvas(true);
+    requestAnimationFrame(scheduleFit);
+  });
+
+  window.GlyphForgeCanvasViewport = {
+    fit: () => setFitCanvas(true),
+    free: () => setFitCanvas(false),
+    isFit: () => fitCanvasEnabled
+  };
 
   requestAnimationFrame(scheduleFit);
 })();
@@ -80,7 +194,7 @@
   if (document.getElementById(id)) return;
   const script = document.createElement('script');
   script.id = id;
-  script.src = 'image-fit.js?v=20260821-1630';
+  script.src = 'image-fit.js?v=20260821-1640';
   script.async = false;
   document.body.appendChild(script);
 })();
@@ -97,7 +211,7 @@
   const LAYERS_SCRIPT_ID = 'glyphforge-layers-ui-script';
   const CONTEXT_STYLE_ID = 'glyphforge-context-menu-style';
   const CONTEXT_SCRIPT_ID = 'glyphforge-context-menu-script';
-  const VERSION = '20260821-1630';
+  const VERSION = '20260821-1640';
 
   function loadContextMenus() {
     if (!document.getElementById(CONTEXT_STYLE_ID)) {
