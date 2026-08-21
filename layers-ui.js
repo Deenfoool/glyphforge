@@ -15,6 +15,7 @@
 
   let root = null;
   let renderQueued = false;
+  let contentRefreshTimer = 0;
 
   function api() { return window.GlyphForgeLayers; }
   function findRoot() { return document.querySelector('.inspector-page[data-inspector-page="layers"]'); }
@@ -27,6 +28,11 @@
       renderQueued = false;
       render();
     });
+  }
+
+  function scheduleContentRefresh() {
+    clearTimeout(contentRefreshTimer);
+    contentRefreshTimer = setTimeout(scheduleRender, 180);
   }
 
   function bindHeaderControls(container, layers, activeId) {
@@ -179,7 +185,10 @@
     if (attempt < 180) requestAnimationFrame(() => waitForLayout(attempt + 1));
   }
 
-  window.addEventListener('glyphforge:layers-changed', scheduleRender);
+  window.addEventListener('glyphforge:layers-changed', event => {
+    if (event.detail?.reason === 'render') scheduleContentRefresh();
+    else scheduleRender();
+  });
   window.addEventListener('load', scheduleRender);
   waitForLayout();
 })();
