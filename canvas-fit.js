@@ -70,23 +70,41 @@
   requestAnimationFrame(scheduleFit);
 })();
 
-// Load the professional editor layout without disturbing the existing app
-// bindings. The layout module only relocates already-bound DOM nodes.
+// Load the editor shell only after its stylesheet is ready. Relocating the
+// controls before the CSS was applied caused the huge unstyled layout seen on
+// GitHub Pages, especially when the stylesheet was not yet cached.
 (() => {
   'use strict';
 
-  if (!document.querySelector('link[data-glyphforge-editor-layout]')) {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'editor-layout.css';
-    link.dataset.glyphforgeEditorLayout = 'true';
-    document.head.appendChild(link);
+  const STYLE_ID = 'glyphforge-editor-layout-style';
+  const SCRIPT_ID = 'glyphforge-editor-layout-script';
+  const VERSION = '20260821-1545';
+
+  function loadLayoutScript() {
+    if (document.getElementById(SCRIPT_ID)) return;
+
+    const script = document.createElement('script');
+    script.id = SCRIPT_ID;
+    script.src = `editor-layout.js?v=${VERSION}`;
+    script.async = false;
+    document.body.appendChild(script);
   }
 
-  if (!document.querySelector('script[data-glyphforge-editor-layout]')) {
-    const script = document.createElement('script');
-    script.src = 'editor-layout.js';
-    script.dataset.glyphforgeEditorLayout = 'true';
-    document.body.appendChild(script);
+  let link = document.getElementById(STYLE_ID);
+
+  if (!link) {
+    link = document.createElement('link');
+    link.id = STYLE_ID;
+    link.rel = 'stylesheet';
+    link.href = `editor-layout.css?v=${VERSION}`;
+    link.addEventListener('load', loadLayoutScript, { once: true });
+    link.addEventListener('error', () => {
+      console.error('GlyphForge: editor-layout.css failed to load');
+    }, { once: true });
+    document.head.appendChild(link);
+  } else if (link.sheet) {
+    loadLayoutScript();
+  } else {
+    link.addEventListener('load', loadLayoutScript, { once: true });
   }
 })();
