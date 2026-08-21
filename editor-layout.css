@@ -1,0 +1,49 @@
+/* GlyphForge professional editor layout: tool rail + top options dock + inspector */
+body.editor-pro-layout{overflow:hidden}
+.editor-pro-layout .app-shell{height:100vh}
+.editor-pro-layout .topbar{min-height:58px;padding:8px 12px;flex:0 0 auto}
+.editor-pro-layout .brand-mark{width:36px;height:36px}
+.editor-pro-layout .brand-wrap h1{font-size:14px}
+.editor-pro-layout .brand-wrap p{font-size:8px}
+.editor-pro-layout .top-actions{flex-wrap:nowrap;overflow-x:auto}
+
+.options-dock{position:relative;z-index:20;flex:0 0 auto;min-height:54px;display:flex;align-items:stretch;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--panel) 97%,transparent);box-shadow:0 5px 20px rgba(0,0,0,.22);overflow-x:auto;overflow-y:visible}
+.options-dock::-webkit-scrollbar{height:6px}.options-dock::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--accent) 18%,transparent);border-radius:99px}
+.options-dock .brush-head{position:relative;top:auto;z-index:auto;flex:0 0 300px;display:grid;grid-template-columns:92px 1fr;gap:7px;align-items:center;padding:5px 7px;border:1px solid var(--line);border-radius:8px;background:color-mix(in srgb,var(--panel2) 82%,transparent)}
+.options-dock .brush-head .section-title-row{display:none}
+.options-dock .brush-preview-wrap{margin:0;height:38px;border-radius:5px}
+.options-dock #brushPreviewCanvas{height:36px}
+.options-dock .mode-row{gap:5px}
+.options-dock .mode-row label{font-size:7px}
+.options-dock .mode-row .select{min-height:27px;padding:4px 5px;font-size:8px}
+
+.options-dock .settings-group{position:relative;flex:0 0 auto;border:0;background:transparent}
+.options-dock .settings-group>summary{height:42px;display:flex;align-items:center;padding:0 11px;border:1px solid var(--line);border-radius:7px;background:var(--button);font-size:8px;letter-spacing:.045em;text-transform:none;white-space:nowrap}
+.options-dock .settings-group>summary:before{margin-right:5px}
+.options-dock .settings-group[open]>summary{border-color:color-mix(in srgb,var(--accent) 58%,var(--line));color:var(--accent);box-shadow:0 0 14px color-mix(in srgb,var(--accent) 6%,transparent)}
+.options-dock .settings-group>.settings-body{position:fixed;z-index:1000;top:116px;width:min(320px,calc(100vw - 24px));max-height:calc(100vh - 138px);overflow:auto;padding:12px;border:1px solid var(--line2);border-radius:10px;background:color-mix(in srgb,var(--panel) 99%,black 1%);box-shadow:0 20px 55px rgba(0,0,0,.55);display:grid;gap:8px}
+.options-dock .settings-group:nth-of-type(2)>.settings-body{left:320px}.options-dock .settings-group:nth-of-type(3)>.settings-body{left:390px}.options-dock .settings-group:nth-of-type(4)>.settings-body{left:460px}.options-dock .settings-group:nth-of-type(5)>.settings-body{left:530px}.options-dock .settings-group:nth-of-type(6)>.settings-body{left:600px}.options-dock .settings-group:nth-of-type(7)>.settings-body{left:670px}.options-dock .settings-group:nth-of-type(8)>.settings-body{left:740px}.options-dock .settings-group:nth-of-type(n+9)>.settings-body{right:12px}
+
+.editor-pro-layout .workspace{grid-template-columns:112px minmax(440px,1fr) 300px;gap:8px;padding:8px}
+.editor-pro-layout .left-panel{overflow:hidden}
+.editor-pro-layout .left-panel .panel-section{padding:8px}
+.editor-pro-layout .left-panel .section-title-row h2{font-size:8px}
+.editor-pro-layout .left-panel .hint{display:none}
+.editor-pro-layout .left-panel .tool-grid{grid-template-columns:1fr;gap:5px}
+.editor-pro-layout .left-panel .tool-button{min-height:48px;align-items:center;text-align:center;padding:6px 4px}
+.editor-pro-layout .left-panel .tool-button span{font-size:17px}
+.editor-pro-layout .left-panel .tool-button small{font-size:8px}
+.editor-pro-layout .right-panel{scrollbar-gutter:stable;overflow:auto}
+.editor-pro-layout .right-panel .panel-section{padding:11px}
+.editor-pro-layout .right-panel .quick-palette{grid-template-columns:repeat(8,1fr)}
+.editor-pro-layout .editor-toolbar{min-height:42px;padding:5px 7px}
+.editor-pro-layout .crt-bezel{padding:10px}
+
+.inspector-section{border-bottom:1px solid var(--line);padding:11px}
+.inspector-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px}
+.inspector-title-row h2{margin:0;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:color-mix(in srgb,var(--text) 82%,var(--muted))}
+.layer-actions{display:flex;gap:4px}.layer-icon-button{width:26px;height:25px;display:grid;place-items:center;border:1px solid var(--line);border-radius:5px;background:var(--input);color:var(--muted);font-size:12px}.layer-icon-button[disabled]{opacity:.35;cursor:not-allowed}
+.layer-list{display:grid;gap:5px}.layer-row{display:grid;grid-template-columns:26px 34px 1fr 24px;align-items:center;gap:6px;padding:6px;border:1px solid color-mix(in srgb,var(--accent) 42%,var(--line));border-radius:7px;background:color-mix(in srgb,var(--accent) 5%,var(--input))}.layer-eye,.layer-lock{display:grid;place-items:center;color:var(--muted);font-size:11px}.layer-thumb{height:30px;border:1px solid var(--line);border-radius:4px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 12%,var(--screen)),var(--screen))}.layer-name{min-width:0}.layer-name strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px}.layer-name small{display:block;margin-top:2px;color:var(--muted);font-size:7px}.layer-engine-note{margin:7px 0 0;color:var(--muted);font-size:7px;line-height:1.4}
+
+@media (max-width:1150px){.editor-pro-layout .workspace{grid-template-columns:92px minmax(360px,1fr) 260px}.options-dock .brush-head{flex-basis:260px}.editor-pro-layout .top-actions .button{padding:7px 8px;font-size:8px}}
+@media (max-width:900px){body.editor-pro-layout{overflow:auto}.editor-pro-layout .app-shell{height:auto;min-height:100vh}.editor-pro-layout .workspace{grid-template-columns:82px minmax(0,1fr);grid-template-areas:'tools editor' 'inspector inspector'}.editor-pro-layout .left-panel{grid-area:tools}.editor-pro-layout .editor-column{grid-area:editor;min-height:620px}.editor-pro-layout .right-panel{grid-area:inspector;max-height:none}.options-dock .settings-group>.settings-body{top:116px;left:12px!important;right:auto!important}}
