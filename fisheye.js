@@ -12,6 +12,7 @@
   const FILTER_ID = 'glyphforgeBarrelFilter';
   const DISPLACEMENT_ID = 'glyphforgeBarrelDisplacement';
   const MAX_FILTER_SCALE = 38;
+  const activeCanvasPointers = new Set();
 
   function createDisplacementMap(size = 256) {
     const mapCanvas = document.createElement('canvas');
@@ -31,9 +32,6 @@
         const radial = Math.min(1, radius2);
         const i = (y * size + x) * 4;
 
-        // feDisplacementMap interprets 0.5 as no movement. Moving the
-        // sampling point away from the centre produces classic barrel
-        // distortion: straight lines bow outwards like a convex CRT tube.
         data[i] = Math.round(128 + 127 * nx * radial);
         data[i + 1] = Math.round(128 + 127 * ny * radial);
         data[i + 2] = 128;
@@ -166,10 +164,6 @@
     const radius2 = nx * nx + ny * ny;
     const radial = Math.min(1, radius2);
     const scale = getFilterScale();
-
-    // Same mapping as the displacement texture above. This keeps brush
-    // coordinates aligned with the visibly curved image instead of making
-    // the fish-eye effect merely decorative.
     const dx = scale * 0.5 * nx * radial;
     const dy = scale * 0.5 * ny * radial;
 
@@ -210,6 +204,10 @@
   function remapCanvasPointer(event) {
     if (!event.isTrusted || !toggle.checked || getStrength() <= 0) return;
 
+    if (event.type === 'pointerdown') {
+      activeCanvasPointers.add(event.pointerId);
+    }
+
     const point = sourcePointForDisplayedPoint(event.clientX, event.clientY);
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -217,7 +215,11 @@
   }
 
   function remapWindowPointerUp(event) {
-    if (!event.isTrusted || !toggle.checked || getStrength() <= 0) return;
+    if (!event.isTrusted || !activeCanvasPointers.has(event.pointerId)) return;
+
+    activeCanvasPointers.delete(event.pointerId);
+
+    if (!toggle.checked || getStrength() <= 0) return;
 
     const point = sourcePointForDisplayedPoint(event.clientX, event.clientY);
     event.preventDefault();
@@ -228,6 +230,7 @@
   canvas.addEventListener('pointerdown', remapCanvasPointer, true);
   canvas.addEventListener('pointermove', remapCanvasPointer, true);
   window.addEventListener('pointerup', remapWindowPointerUp, true);
+  window.addEventListener('pointercancel', event => activeCanvasPointers.delete(event.pointerId), true);
 
   toggle.addEventListener('change', updateBarrelDistortion);
   range.addEventListener('input', updateBarrelDistortion);
