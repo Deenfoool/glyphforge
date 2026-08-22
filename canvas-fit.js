@@ -15,97 +15,102 @@
   if (!frame || !canvas || !colsInput || !rowsInput || !resizeBtn) return;
 
   let resizeFrame = 0;
-  let applyingGridFit = false;
   let fitCanvasEnabled = true;
+  let verifyingFit = false;
 
-  function numberValue(input, fallback) {
-    const value = Number(input?.value);
-    return Number.isFinite(value) && value > 0 ? value : fallback;
+  function installFitStyles() {
+    if (document.getElementById('glyphforge-canvas-viewport-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'glyphforge-canvas-viewport-styles';
+    style.textContent = `
+      .canvas-frame.glyphforge-canvas-fit-active {
+        overflow: hidden !important;
+      }
+      .canvas-frame.glyphforge-canvas-fit-active #asciiCanvas[data-viewport-fit="true"] {
+        display: block !important;
+        max-width: none !important;
+        max-height: none !important;
+        margin: 0 !important;
+        transform: none !important;
+        transform-origin: 0 0 !important;
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   function clearDisplayFit() {
     canvas.style.removeProperty('width');
     canvas.style.removeProperty('height');
     canvas.dataset.viewportFit = 'false';
+    frame.classList.remove('glyphforge-canvas-fit-active');
     updateFitButton();
   }
 
+  function availableViewport() {
+    // Leave a real safety gutter. Using the exact clientWidth/clientHeight can
+    // still produce a scrollbar because of sub-pixel rounding, CRT clipping
+    // and browser scrollbar metrics.
+    const gutter = 12;
+    return {
+      width: Math.max(1, frame.clientWidth - gutter),
+      height: Math.max(1, frame.clientHeight - gutter)
+    };
+  }
+
+  function applyDisplaySize(width, height) {
+    // Important is intentional: the canvas is the document surface and its
+    // fitted display size must win over editor/theme CSS loaded later.
+    canvas.style.setProperty('width', `${Math.max(1, Math.floor(width))}px`, 'important');
+    canvas.style.setProperty('height', `${Math.max(1, Math.floor(height))}px`, 'important');
+    canvas.dataset.viewportFit = 'true';
+    frame.classList.add('glyphforge-canvas-fit-active');
+    frame.scrollLeft = 0;
+    frame.scrollTop = 0;
+  }
+
   function fitCanvasDisplay() {
+    resizeFrame = 0;
     if (!fitCanvasEnabled || !canvas.width || !canvas.height) {
       clearDisplayFit();
       return;
     }
 
-    const availableWidth = Math.max(1, frame.clientWidth - 2);
-    const availableHeight = Math.max(1, frame.clientHeight - 2);
-    if (!availableWidth || !availableHeight) return;
-
-    // Keep the real canvas resolution untouched. Only its CSS display box is
-    // scaled down. Pointer mapping in app-v3.js already uses the ratio between
-    // canvas.width and getBoundingClientRect(), so brushes stay pixel-accurate.
+    const available = availableViewport();
     const scale = Math.min(
       1,
-      availableWidth / canvas.width,
-      availableHeight / canvas.height
+      available.width / canvas.width,
+      available.height / canvas.height
     );
 
-    const width = Math.max(1, Math.floor(canvas.width * scale));
-    const height = Math.max(1, Math.floor(canvas.height * scale));
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-    canvas.dataset.viewportFit = 'true';
-
-    // A fitted document starts from its top-left corner and never opens with
-    // half of the canvas already scrolled out of view.
-    frame.scrollLeft = 0;
-    frame.scrollTop = 0;
+    applyDisplaySize(canvas.width * scale, canvas.height * scale);
     updateFitButton();
-  }
 
-  function expandGridToViewport() {
-    if (applyingGridFit || !canvas.width || !canvas.height) return false;
+    // Validate the ACTUAL CSS box after layout. This second pass makes the
+    // fit robust against late-loaded styles, zoom rounding and CRT geometry.
+    if (!verifyingFit) {
+      verifyingFit = true;
+      requestAnimationFrame(() => {
+        verifyingFit = false;
+        if (!fitCanvasEnabled) return;
+        const rect = canvas.getBoundingClientRect();
+        const availableNow = availableViewport();
+        if (!rect.width || !rect.height) return;
+        if (rect.width <= availableNow.width + .5 && rect.height <= availableNow.height + .5) return;
 
-    const cols = numberValue(colsInput, 80);
-    const rows = numberValue(rowsInput, 42);
-    const cellWidth = canvas.width / cols;
-    const cellHeight = canvas.height / rows;
-
-    if (!cellWidth || !cellHeight || !frame.clientWidth || !frame.clientHeight) return false;
-
-    const maxCols = numberValue({ value: colsInput.max }, 360);
-    const maxRows = numberValue({ value: rowsInput.max }, 240);
-    const requiredCols = Math.min(maxCols, Math.ceil(frame.clientWidth / cellWidth));
-    const requiredRows = Math.min(maxRows, Math.ceil(frame.clientHeight / cellHeight));
-    const nextCols = Math.max(cols, requiredCols);
-    const nextRows = Math.max(rows, requiredRows);
-
-    if (nextCols === cols && nextRows === rows) return false;
-
-    applyingGridFit = true;
-    colsInput.value = String(nextCols);
-    rowsInput.value = String(nextRows);
-    resizeBtn.click();
-
-    requestAnimationFrame(() => {
-      applyingGridFit = false;
-      scheduleFit();
-    });
-    return true;
-  }
-
-  function fitViewport() {
-    resizeFrame = 0;
-
-    // Preserve the earlier behaviour where an undersized document grows to
-    // cover the available drawing field. Once the grid is large enough, fit
-    // its entire display box back inside the CRT viewport.
-    if (fitCanvasEnabled && expandGridToViewport()) return;
-    fitCanvasDisplay();
+        const correction = Math.min(
+          availableNow.width / rect.width,
+          availableNow.height / rect.height,
+          1
+        );
+        applyDisplaySize(rect.width * correction, rect.height * correction);
+      });
+    }
   }
 
   function scheduleFit() {
+    if (!fitCanvasEnabled) return;
     if (resizeFrame) cancelAnimationFrame(resizeFrame);
-    resizeFrame = requestAnimationFrame(fitViewport);
+    resizeFrame = requestAnimationFrame(fitCanvasDisplay);
   }
 
   function setFitCanvas(enabled) {
@@ -124,7 +129,7 @@
     button.type = 'button';
     button.className = 'button ghost';
     button.textContent = 'Вписать холст';
-    button.title = 'Показать весь холст целиком внутри рабочей области';
+    button.title = 'Показать весь холст целиком внутри CRT-окна';
     button.addEventListener('click', () => setFitCanvas(true));
     zoomLabel.insertAdjacentElement('afterend', button);
   }
@@ -136,6 +141,7 @@
     button.textContent = fitCanvasEnabled ? 'Холст вписан' : 'Вписать холст';
   }
 
+  installFitStyles();
   installFitButton();
 
   if (typeof ResizeObserver !== 'undefined') {
@@ -143,28 +149,31 @@
       if (fitCanvasEnabled) scheduleFit();
     });
     observer.observe(frame);
-    observer.observe(canvas);
   }
 
-  window.addEventListener('resize', () => {
-    if (fitCanvasEnabled) scheduleFit();
-  });
+  // Canvas intrinsic dimensions are changed by app-v3.js when the grid or
+  // zoom changes. Observe those attributes directly rather than the canvas
+  // CSS box; observing the fitted CSS size itself can create resize loops.
+  if (typeof MutationObserver !== 'undefined') {
+    const observer = new MutationObserver(() => {
+      if (fitCanvasEnabled) scheduleFit();
+    });
+    observer.observe(canvas, { attributes: true, attributeFilter: ['width', 'height'] });
+  }
 
-  // Any deliberate zoom means the user wants to inspect the document closer.
-  // Disable auto-fit first; clicking "Вписать холст" restores the full view.
-  zoomRange?.addEventListener('input', () => {
-    if (!applyingGridFit) setFitCanvas(false);
-  });
-  frame.addEventListener('wheel', () => setFitCanvas(false), { capture: true, passive: true });
+  window.addEventListener('resize', scheduleFit);
+
+  // Manual zoom intentionally enters free/scrollable mode. The user can
+  // restore the complete document with one click on "Вписать холст".
+  zoomRange?.addEventListener('input', () => setFitCanvas(false));
 
   resizeBtn.addEventListener('click', () => {
-    if (!applyingGridFit && fitCanvasEnabled) requestAnimationFrame(scheduleFit);
+    if (fitCanvasEnabled) requestAnimationFrame(scheduleFit);
   });
 
-  // Loading or fitting a source image should always leave the complete glyph
-  // canvas visible. The image may be contained correctly while the document
-  // itself is larger than the CRT viewport; this is the bug this controller
-  // fixes.
+  // Any image workflow must end with the COMPLETE document visible. This is
+  // the important part: fitting the source image and fitting the glyph canvas
+  // are separate operations.
   imageInput?.addEventListener('change', () => setFitCanvas(true), true);
   fitImageGridBtn?.addEventListener('click', () => {
     setFitCanvas(true);
@@ -178,7 +187,8 @@
   window.GlyphForgeCanvasViewport = {
     fit: () => setFitCanvas(true),
     free: () => setFitCanvas(false),
-    isFit: () => fitCanvasEnabled
+    isFit: () => fitCanvasEnabled,
+    refresh: scheduleFit
   };
 
   requestAnimationFrame(scheduleFit);
@@ -194,7 +204,7 @@
   if (document.getElementById(id)) return;
   const script = document.createElement('script');
   script.id = id;
-  script.src = 'image-fit.js?v=20260821-1640';
+  script.src = 'image-fit.js?v=20260822-0815';
   script.async = false;
   document.body.appendChild(script);
 })();
@@ -211,7 +221,7 @@
   const LAYERS_SCRIPT_ID = 'glyphforge-layers-ui-script';
   const CONTEXT_STYLE_ID = 'glyphforge-context-menu-style';
   const CONTEXT_SCRIPT_ID = 'glyphforge-context-menu-script';
-  const VERSION = '20260821-1640';
+  const VERSION = '20260822-0815';
 
   function loadContextMenus() {
     if (!document.getElementById(CONTEXT_STYLE_ID)) {
