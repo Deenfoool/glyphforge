@@ -47,9 +47,6 @@
   }
 
   function availableViewport() {
-    // Leave a real safety gutter. Using the exact clientWidth/clientHeight can
-    // still produce a scrollbar because of sub-pixel rounding, CRT clipping
-    // and browser scrollbar metrics.
     const gutter = 12;
     return {
       width: Math.max(1, frame.clientWidth - gutter),
@@ -58,8 +55,6 @@
   }
 
   function applyDisplaySize(width, height) {
-    // Important is intentional: the canvas is the document surface and its
-    // fitted display size must win over editor/theme CSS loaded later.
     canvas.style.setProperty('width', `${Math.max(1, Math.floor(width))}px`, 'important');
     canvas.style.setProperty('height', `${Math.max(1, Math.floor(height))}px`, 'important');
     canvas.dataset.viewportFit = 'true';
@@ -76,8 +71,11 @@
     }
 
     const available = availableViewport();
+
+    // Scale both down AND up. The complete document always stays inside the
+    // CRT window, while a small canvas uses as much of the editor viewport as
+    // its aspect ratio allows. Intrinsic glyph resolution never changes.
     const scale = Math.min(
-      1,
       available.width / canvas.width,
       available.height / canvas.height
     );
@@ -85,8 +83,6 @@
     applyDisplaySize(canvas.width * scale, canvas.height * scale);
     updateFitButton();
 
-    // Validate the ACTUAL CSS box after layout. This second pass makes the
-    // fit robust against late-loaded styles, zoom rounding and CRT geometry.
     if (!verifyingFit) {
       verifyingFit = true;
       requestAnimationFrame(() => {
@@ -151,9 +147,6 @@
     observer.observe(frame);
   }
 
-  // Canvas intrinsic dimensions are changed by app-v3.js when the grid or
-  // zoom changes. Observe those attributes directly rather than the canvas
-  // CSS box; observing the fitted CSS size itself can create resize loops.
   if (typeof MutationObserver !== 'undefined') {
     const observer = new MutationObserver(() => {
       if (fitCanvasEnabled) scheduleFit();
@@ -163,17 +156,12 @@
 
   window.addEventListener('resize', scheduleFit);
 
-  // Manual zoom intentionally enters free/scrollable mode. The user can
-  // restore the complete document with one click on "Вписать холст".
   zoomRange?.addEventListener('input', () => setFitCanvas(false));
 
   resizeBtn.addEventListener('click', () => {
     if (fitCanvasEnabled) requestAnimationFrame(scheduleFit);
   });
 
-  // Any image workflow must end with the COMPLETE document visible. This is
-  // the important part: fitting the source image and fitting the glyph canvas
-  // are separate operations.
   imageInput?.addEventListener('change', () => setFitCanvas(true), true);
   fitImageGridBtn?.addEventListener('click', () => {
     setFitCanvas(true);
@@ -194,9 +182,6 @@
   requestAnimationFrame(scheduleFit);
 })();
 
-// Image fitting is independent from the shell, so load it immediately after
-// app-v3.js. The default mode is "contain": the whole source image remains
-// visible instead of being cropped to the current glyph-canvas aspect ratio.
 (() => {
   'use strict';
 
@@ -204,15 +189,11 @@
   if (document.getElementById(id)) return;
   const script = document.createElement('script');
   script.id = id;
-  script.src = 'image-fit.js?v=20260822-0815';
+  script.src = 'image-fit.js?v=20260822-0820';
   script.async = false;
   document.body.appendChild(script);
 })();
 
-// Load the editor shell only after its stylesheet is ready, then layer UI and
-// finally the adaptive context-menu system. Keeping this order avoids the
-// unstyled-layout flash on GitHub Pages and gives context menus access to the
-// real layer inspector instead of placeholder DOM.
 (() => {
   'use strict';
 
@@ -221,7 +202,7 @@
   const LAYERS_SCRIPT_ID = 'glyphforge-layers-ui-script';
   const CONTEXT_STYLE_ID = 'glyphforge-context-menu-style';
   const CONTEXT_SCRIPT_ID = 'glyphforge-context-menu-script';
-  const VERSION = '20260822-0815';
+  const VERSION = '20260822-0820';
 
   function loadContextMenus() {
     if (!document.getElementById(CONTEXT_STYLE_ID)) {
